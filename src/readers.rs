@@ -7,6 +7,13 @@ pub struct BinaryBufferReader {
     buffer: Vec<u8>
 }
 
+// BinaryBufferReader is used to read Dicom files loaded into memory.
+// Why not just read & parse directly from files?
+// Rationale: 
+// - A Dicom stack can contain hundreds/thousands of slices.
+//   Load time is an issue if they are processed sequentially.
+// - Read & parse directly from files hinders parallelization due to disk contention.
+// - Mem buffering allows parallel processing of Dicom slices.
 impl BinaryBufferReader {
     pub fn new(buffer: Vec<u8>) -> BinaryBufferReader {        
         BinaryBufferReader { pos: 0, buffer: buffer }    
