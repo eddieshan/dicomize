@@ -1,5 +1,7 @@
 use std::str;
 
+use crate::errors;
+
 pub struct BinaryBufferReader {
     pos: usize,
     buffer: Vec<u8>
@@ -53,7 +55,7 @@ impl BinaryBufferReader {
         self.pos = end;
         match str::from_utf8(value) {
             Ok(v) => v,
-            Err(_) => panic!()
+            Err(_) => panic!(errors::NON_UTF8_STRING) // TODO: propagate Error upwards instead of instant panic here.
         }
     }
 
