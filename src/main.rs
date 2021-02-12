@@ -3,6 +3,7 @@ mod vr_types;
 mod sop_class;
 mod transfer_syntax;
 mod tags;
+mod readers;
 
 fn main() {
     println!("Hello, world!");
