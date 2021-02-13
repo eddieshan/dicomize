@@ -123,3 +123,128 @@ fn number_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMar
     }
 }
 
+fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag {
+
+    // First pass to get get transfer syntax based on lookup of group number.
+    // Then rewind and start reading this time using the specified encoding.
+    let group_peek = reader.read_rewind_u16();
+
+    let next_syntax = match group_peek {
+        0x0002_u16 => default_syntax(),
+        _          => syntax
+    };
+
+    let endian_reader = match next_syntax.endian_encoding {
+        EndianEncoding::LittleEndian => reader,
+        EndianEncoding::BigEndian    => reader
+    };
+
+    let group = endian_reader.read_u16();
+    let element = endian_reader.read_u16();
+    let tag_id = (group, element);
+
+    let vr = parse_vr_type(endian_reader, group, element, syntax.vr_encoding);
+
+    match vr {
+        VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::Unknown => {
+            skip_reserved(endian_reader, next_syntax.vr_encoding);
+            let length = endian_reader.read_i32();
+            let marker = marker(endian_reader, length);
+
+            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+
+        },
+        VrType::UnlimitedText => {
+            skip_reserved(endian_reader, next_syntax.vr_encoding);
+            let length = endian_reader.read_i32();
+            let marker = marker(endian_reader, length);
+
+            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+        },
+        VrType::SequenceOfItems => {
+            skip_reserved(endian_reader, next_syntax.vr_encoding);
+            let length = endian_reader.read_i32();
+
+            ignored_tag(endian_reader, tag_id, syntax, vr, length)
+        },
+        VrType::ApplicationEntity | VrType::AgeString | VrType::CodeString | VrType::Date | 
+        VrType::DateTime | VrType::LongText | VrType::PersonName | VrType::ShortString | 
+        VrType::ShortText | VrType::Time | VrType::Uid => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+
+            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+        },
+        VrType::DecimalString | VrType::IntegerString | VrType::LongString => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+
+            match usize::try_from(marker.value_length) {
+                Ok(length) => {
+                    let value = endian_reader.read_str(length);
+                    match i64::try_from(value.split('\\').count()) {
+                        Ok(vm) => {
+                            vm_tag(tag_id, next_syntax, vr, vm, marker, String::from(value))
+                        },
+                        Err(_) => panic!("Tag marker has invalid value length")
+                    }                    
+                },
+                Err(_) => panic!("Tag marker has invalid value length")
+            }
+        },
+        VrType::Attribute => {
+            // 2 bytes value length, 4 bytes value. {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+            let next_group = endian_reader.read_u16();
+            let next_element = endian_reader.read_u16();
+
+            DicomTag {
+                id: (next_group, next_element),
+                syntax: syntax,
+                vr: vr,
+                vm: None,
+                marker: marker,
+                value: String::from("")
+            }
+        },
+        VrType::UnsignedLong => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+            number_tag(tag_id, next_syntax, vr, marker, 4)
+        },
+        VrType::UnsignedShort => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+            number_tag(tag_id, next_syntax, vr, marker, 2)
+        },
+        VrType::SignedLong => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+            number_tag(tag_id, next_syntax, vr, marker, 4)
+        },
+        VrType::SignedShort => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+            number_tag(tag_id, next_syntax, vr, marker, 2)
+        },
+        VrType::Float => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+            number_tag(tag_id, next_syntax, vr, marker, 4)
+        },
+        VrType::Double => {
+            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
+            number_tag(tag_id, next_syntax, vr, marker, 8)
+        },
+        VrType::Delimiter => {
+            let length = endian_reader.read_i32();
+            ignored_tag(endian_reader, tag_id, syntax, vr, length)
+        }
+    };
+
+    DicomTag {
+        id: (0_u16, 0_u16),
+        syntax: next_syntax,
+        vr: VrType::Unknown,
+        vm: None,
+        marker: TagMarker {
+            value_length: 0,
+            stream_position: 0
+        },
+        value: String::from(UNKNOWN_VALUE)
+    }
+}
+
