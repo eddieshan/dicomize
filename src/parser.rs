@@ -57,3 +57,69 @@ fn marker(reader: &mut BinaryBufferReader, length: i32) -> TagMarker {
     }
 }
 
+fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
+    match encoding {
+        VrEncoding::Explicit => reader.jump(2),
+        _                    => {}
+    }        
+}
+
+fn basic_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, value: String) -> DicomTag {
+    DicomTag {
+        id: id,
+        syntax: syntax,
+        vr: vr,
+        vm: None,
+        marker: marker,
+        value: value
+    }
+}
+
+fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
+    match usize::try_from(marker.value_length) {
+        Ok(length) => {
+            let value = reader.read_str(length);
+            basic_tag(id, syntax, vr, marker, String::from(value))
+        },        
+        Err(_) => panic!("Tag marker has invalid value length") // TODO: use proper error propagation instead of panic.
+    }
+}
+
+fn vm_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, vm: i64, marker: TagMarker, value: String) -> DicomTag {
+    DicomTag {
+        id: id,
+        syntax: syntax,
+        vr: vr,
+        vm: Some(vm),
+        marker: marker,
+        value: value
+    }
+}
+
+fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, length: i32) -> DicomTag {
+    let marker = marker(reader, length);
+    basic_tag(id, syntax, vr, marker, String::from(""))
+}
+
+fn read_number_series(size: i64, length: i32) -> (String, i64) {
+    let value = String::from("");
+
+    let vm = (i64::from(length))/size;
+
+    // TODO: calculate value as concatenation of multiple reads.
+    (value, vm)
+}
+
+fn number_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, size: i64) -> DicomTag { 
+    let (value, vm) = read_number_series(size, marker.value_length);
+
+    DicomTag {
+        id: id,
+        syntax: syntax,
+        vr: vr,
+        vm: Some(vm),
+        marker: marker,
+        value: value
+    }
+}
+
