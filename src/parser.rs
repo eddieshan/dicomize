@@ -248,3 +248,77 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     }
 }
 
+fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, parent_index: usize, syntax: TransferSyntax, limit_pos: usize) {
+    let tag = next_tag(reader, syntax);
+    let value_length = tag.marker.value_length;
+    let tag_id = tag.id;
+    let vr = tag.vr;
+
+    let child_syntax = match tag_id {
+        TRANSFER_SYNTAX_UID => parse_syntax(&tag.value),
+        _                   => syntax
+    };    
+    
+    let child = Node { tag: tag, children: Vec::new() };
+    nodes.push(child);
+
+    let child_index = nodes.len() - 1;
+    nodes[parent_index].children.push(child_index);     
+
+    if reader.pos() < limit_pos && tag_id != SEQUENCE_DELIMITER {               
+
+        let next_limit = match (vr, value_length) {
+            (VrType::SequenceOfItems, -1) => Some(reader.len()),
+            (VrType::SequenceOfItems, _)   => {
+                match usize::try_from(value_length) {
+                    Ok(v) => Some(reader.pos() + v),
+                    Err(_) => None
+                }
+            },
+            (_, _)                          => None
+        };
+
+        if let Some(l) = next_limit {            
+            parse_tags(reader, nodes, child_index, child_syntax, l);
+        };
+
+        parse_tags(reader, nodes, parent_index, child_syntax, limit_pos);        
+    }
+}
+
+pub fn parse_dicom(buffer: Vec<u8>) -> Vec<Node> {
+    // Dicom file header,
+    // - Fixed preamble not to be used: 128 bytes.
+    // - DICOM Prefix "DICM": 4 bytes.
+    // - File Meta Information: sequence of FileMetaAttribute.
+    //   FileMetaAttribute structure: (0002,xxxx), encoded with ExplicitVRLittleEndian Transfer Syntax.
+    let (preamble_length, dicm_mark_length) = (128, 4);
+    let reader = &mut BinaryBufferReader::new(buffer);
+    reader.seek(preamble_length);
+
+    let dicm_mark = reader.read_str(dicm_mark_length);
+
+    if dicm_mark != STANDARD_PREAMBLE {
+        reader.seek(0);
+    }
+
+    let element = DicomTag {
+        id: (0_u16, 0_u16),
+        syntax: TransferSyntax { 
+            vr_encoding: VrEncoding::Explicit, 
+            endian_encoding: EndianEncoding::LittleEndian
+        },
+        vr: VrType::Unknown,
+        vm: None,
+        marker: TagMarker {
+            value_length: 0,
+            stream_position: 0
+        },
+        value: String::from(UNKNOWN_VALUE)
+    };
+
+    let root = Node { tag: element, children: Vec::new() };
+    let mut nodes = vec![root];
+    parse_tags(reader, &mut nodes, 0, default_syntax(), reader.len());
+    nodes
+}
