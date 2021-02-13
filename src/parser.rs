@@ -41,3 +41,19 @@ fn parse_syntax(syntax: &String) -> TransferSyntax {
     }
 }
 
+fn read_vr_encoding_length(reader: &mut BinaryBufferReader, encoding: VrEncoding) -> TagMarker {
+    let length = match encoding {
+        VrEncoding::Explicit => i32::from(reader.read_i16()),
+        VrEncoding::Implicit => reader.read_i32()
+    };
+
+    marker(reader, length)
+}
+
+fn marker(reader: &mut BinaryBufferReader, length: i32) -> TagMarker {
+    TagMarker {
+        value_length: length,
+        stream_position: reader.pos()
+    }
+}
+
