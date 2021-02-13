@@ -5,6 +5,7 @@ mod transfer_syntax;
 mod tags;
 mod errors;
 mod readers;
+mod parser;
 
 fn main() {
     println!("Hello, world!");
