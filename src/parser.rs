@@ -25,3 +25,19 @@ fn parse_vr_type (reader: &mut BinaryBufferReader, group: u16, element: u16, vr_
         (_, _, false, false)            => VrType::Unknown
     }
 }
+
+fn parse_syntax(syntax: &String) -> TransferSyntax {
+    if syntax.eq_ignore_ascii_case(EXPLICIT_LE) {
+        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
+    }
+    else if syntax.eq_ignore_ascii_case(EXPLICIT_BE) {
+        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::BigEndian };
+    }
+    else if syntax.eq_ignore_ascii_case(IMPLICIT_LE) {
+        return TransferSyntax { vr_encoding: VrEncoding::Implicit, endian_encoding: EndianEncoding::LittleEndian };
+    }
+    else {
+        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
+    }
+}
+
