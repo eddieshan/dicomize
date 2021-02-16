@@ -61,7 +61,7 @@ fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
     match encoding {
         VrEncoding::Explicit => reader.jump(2),
         _                    => {}
-    }        
+    }
 }
 
 fn basic_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, value: String) -> DicomTag {
@@ -76,9 +76,11 @@ fn basic_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMark
 }
 
 fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
+
     match usize::try_from(marker.value_length) {
         Ok(length) => {
             let value = reader.read_str(length);
+            println!("TEXT TAG | LENGTH: {} | VALUE: {}", length, value);
             basic_tag(id, syntax, vr, marker, String::from(value))
         },        
         Err(_) => panic!("Tag marker has invalid value length") // TODO: use proper error propagation instead of panic.
@@ -101,7 +103,13 @@ fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: Transfer
     basic_tag(id, syntax, vr, marker, String::from(""))
 }
 
-fn read_number_series(size: i64, length: i32) -> (String, i64) {
+fn read_number_series(reader: &mut BinaryBufferReader, size: i64, length: i32) -> (String, i64) {
+
+    match usize::try_from(size) {
+        Ok(s) => reader.jump(s),
+        Err(err) => panic!("INVALID NUMBER SIZE") // TODO: propagate Error upwards instead of instant panic here.
+    }
+
     let value = String::from("");
 
     let vm = (i64::from(length))/size;
@@ -110,8 +118,10 @@ fn read_number_series(size: i64, length: i32) -> (String, i64) {
     (value, vm)
 }
 
-fn number_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, size: i64) -> DicomTag { 
-    let (value, vm) = read_number_series(size, marker.value_length);
+fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, size: i64) -> DicomTag {
+    let (value, vm) = read_number_series(reader, size, marker.value_length);
+
+    println!("NUMBER TAG | VALUE: {} | VM: {} | SIZE: {} | LENGTH: {}", value, vm, size, marker.value_length);
 
     DicomTag {
         id: id,
@@ -143,6 +153,8 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     let element = endian_reader.read_u16();
     let tag_id = (group, element);
 
+    println!("TAG | ({}, {})", group, element);
+
     let vr = parse_vr_type(endian_reader, group, element, syntax.vr_encoding);
 
     match vr {
@@ -152,7 +164,6 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
             let marker = marker(endian_reader, length);
 
             text_tag(endian_reader, tag_id, next_syntax, vr, marker)
-
         },
         VrType::UnlimitedText => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
@@ -207,27 +218,27 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
         },
         VrType::UnsignedLong => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(tag_id, next_syntax, vr, marker, 4)
+            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
         },
         VrType::UnsignedShort => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(tag_id, next_syntax, vr, marker, 2)
+            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 2)
         },
         VrType::SignedLong => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(tag_id, next_syntax, vr, marker, 4)
+            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
         },
         VrType::SignedShort => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(tag_id, next_syntax, vr, marker, 2)
+            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 2)
         },
         VrType::Float => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(tag_id, next_syntax, vr, marker, 4)
+            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
         },
         VrType::Double => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(tag_id, next_syntax, vr, marker, 8)
+            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 8)
         },
         VrType::Delimiter => {
             let length = endian_reader.read_i32();
