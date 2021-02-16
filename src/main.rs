@@ -11,28 +11,31 @@ use std::env;
 use std::fs;
 use std::time::Instant;
 
+const MIN_ARGUMENTS: usize = 2;
+
+fn process_dcim(dcim_file_path: &str) {
+
+    println!("PROCESSING {} ...", dcim_file_path);
+
+    match fs::read(dcim_file_path) {
+        Ok(buffer) => {
+            let _ = parser::parse_dicom(buffer);
+        },
+        Err(err) => println!("ERROR: COULD NOT LOAD {}. {}", dcim_file_path, err)
+    };
+}
+
 fn main() {
     println!("DICOM COMMAND LINE PARSER");
 
     let args: Vec<String> = env::args().collect();
 
-    match args.len() {
-        2 => {
-            let dicm_file = &args[1];
+    let now = Instant::now();
 
-            println!("PROCESSING {} ...", dicm_file);
-        
-            let now = Instant::now();
-        
-            let dicom_tree = match fs::read(dicm_file) {
-                Ok(buffer) => {
-                    let _ = parser::parse_dicom(buffer);
-                },
-                Err(err) => println!("ERROR LOADING {}: {}", dicm_file, err)
-            };
-        
-            println!("FINISHED IN {}ms", now.elapsed().as_millis());
-        },
-        _ => println!("ERROR: UNEXPECTED NUMBER OF ARGUMENTS")
+    match args.len() {
+        MIN_ARGUMENTS => process_dcim(&args[1]),
+        _             => println!("ERROR: UNEXPECTED NUMBER OF ARGUMENTS")
     }
+
+    println!("FINISHED IN {}ms", now.elapsed().as_millis());    
 }
