@@ -57,12 +57,13 @@ impl BinaryBufferReader {
     }
 
     pub fn read_str(&mut self, length: usize) -> &str {
-        let end = self.pos + length - 1;
+        let end = self.pos + length;
         let value = &self.buffer[ self.pos .. end ];
         self.pos = end;
+
         match str::from_utf8(value) {
             Ok(v) => v,
-            Err(_) => panic!(errors::NON_UTF8_STRING) // TODO: propagate Error upwards instead of instant panic here.
+            Err(err) => panic!("{} {}", errors::NON_UTF8_STRING, err) // TODO: propagate Error upwards instead of instant panic here.
         }
     }
 
