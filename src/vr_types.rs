@@ -31,6 +31,15 @@ const CATALOGUE: [(char, char, VrType); 28] = [
     ('D', 'L', VrType::Delimiter), // Special SQ related Data Elements Items:
 ];
 
-pub fn get_vr_type(_code: &[u8; 2]) -> VrType {
-    VrType::Date
+pub fn get_vr_type(vr_code: &[u8; 2]) -> VrType {
+    let c0 = char::from(vr_code[0]);
+    let c1 = char::from(vr_code[1]);
+
+    for item in CATALOGUE.iter() {
+        if item.0 == c0 && item.1 == c1 {
+            return item.2;
+        }
+    }
+
+    return VrType::Unknown;
 }
