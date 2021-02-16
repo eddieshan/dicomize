@@ -7,6 +7,22 @@ mod errors;
 mod readers;
 mod parser;
 
+use std::env;
+use std::fs;
+
 fn main() {
-    println!("Hello, world!");
+    println!("DICOM COMMAND LINE PARSER");
+
+    let args: Vec<String> = env::args().collect();
+
+    let dicm_file = &args[1];
+
+    println!("PROCESSING {}", dicm_file);
+
+    let dicom_tree = match fs::read(dicm_file) {
+        Ok(buffer) => {
+            let _ = parser::parse_dicom(buffer);
+        },
+        Err(_) => { }
+    };
 }
