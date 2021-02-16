@@ -9,20 +9,30 @@ mod parser;
 
 use std::env;
 use std::fs;
+use std::time::Instant;
 
 fn main() {
     println!("DICOM COMMAND LINE PARSER");
 
     let args: Vec<String> = env::args().collect();
 
-    let dicm_file = &args[1];
+    match args.len() {
+        2 => {
+            let dicm_file = &args[1];
 
-    println!("PROCESSING {}", dicm_file);
-
-    let dicom_tree = match fs::read(dicm_file) {
-        Ok(buffer) => {
-            let _ = parser::parse_dicom(buffer);
+            println!("PROCESSING {} ...", dicm_file);
+        
+            let now = Instant::now();
+        
+            let dicom_tree = match fs::read(dicm_file) {
+                Ok(buffer) => {
+                    let _ = parser::parse_dicom(buffer);
+                },
+                Err(err) => println!("ERROR LOADING {}: {}", dicm_file, err)
+            };
+        
+            println!("FINISHED IN {}ms", now.elapsed().as_millis());
         },
-        Err(_) => { }
-    };
+        _ => println!("ERROR: UNEXPECTED NUMBER OF ARGUMENTS")
+    }
 }
