@@ -143,7 +143,7 @@ const SOP_CLASSES: [(&str, &str); 140] = [
     ("1.2.840.10008.5.1.4.1.1.12.2", "X-Ray Radiofluoroscopic"),
 ];
 
-pub fn transfer_syntax_name(transfer_syntax_id: &str) -> Option<&str> {
+pub fn try_name(transfer_syntax_id: &str) -> Option<&str> {
     for item in SOP_CLASSES.iter() {
         if item.0 == transfer_syntax_id {
             return Some(item.1);

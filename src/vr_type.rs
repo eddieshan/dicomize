@@ -1,4 +1,35 @@
-use crate::dicom_types::VrType;
+#[derive(Copy, Clone)]
+pub enum VrType {
+    OtherByte,
+    OtherFloat,
+    OtherWord,
+    Unknown,
+    UnlimitedText,
+    SequenceOfItems,
+    ApplicationEntity,
+    AgeString,
+    CodeString,
+    Date,
+    DateTime,
+    LongText,
+    PersonName,
+    ShortString,
+    ShortText,
+    Time,
+    DecimalString,
+    IntegerString,
+    LongString,
+    Uid,
+    Attribute,
+    UnsignedLong,
+    UnsignedShort,
+    SignedLong,
+    SignedShort,
+    Float,
+    Double,
+    Delimiter
+}
+
 
 const CATALOGUE: [(char, char, VrType); 28] = [
     ('O', 'B', VrType::OtherByte), //Other Byte String

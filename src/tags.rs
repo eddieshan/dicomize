@@ -1,4 +1,4 @@
-use crate::dicom_types::{VrType};
+use crate::vr_type::VrType;
 
 const VR_FIELD_SIZE: i32 = 2;
 
@@ -3037,9 +3037,4 @@ pub fn tag_vr_type (group: u16, element: u16) -> VrType {
     }
 
     VrType::Unknown
-}
-
-
-pub fn even(v: u16) -> bool {
-    v % 2 == 0
 }
