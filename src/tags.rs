@@ -3038,8 +3038,3 @@ pub fn tag_vr_type (group: u16, element: u16) -> VrType {
 
     VrType::Unknown
 }
-
-
-pub fn even(v: u16) -> bool {
-    v % 2 == 0
-}

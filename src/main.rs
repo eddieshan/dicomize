@@ -1,3 +1,4 @@
+mod utils;
 mod dicom_types;
 mod vr_type;
 mod sop_class;

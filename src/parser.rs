@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 
+use crate::utils;
 use crate::dicom_types::*;
 use crate::vr_type::*;
 use crate::tags::*;
@@ -11,7 +12,7 @@ const UNKNOWN_VALUE: &str = "UNKNOWN";
 
 fn parse_vr_type (reader: &mut BinaryBufferReader, group: u16, element: u16, vr_encoding: VrEncoding) -> VrType {
     let vr_type = tag_vr_type(group, element);
-    let is_even_group = even(group);
+    let is_even_group = utils::even(group);
     let is_private_code = element <= 0xFFu16;
 
     match (vr_type, vr_encoding, is_even_group, is_private_code) {
