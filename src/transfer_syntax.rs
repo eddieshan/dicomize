@@ -163,7 +163,30 @@ pub struct TransferSyntax {
     pub vr_encoding: VrEncoding,
     pub endian_encoding: EndianEncoding,
 }
+
+impl TransferSyntax {
+    pub fn default() -> TransferSyntax {
+        TransferSyntax { 
+            vr_encoding: VrEncoding::Explicit, 
+            endian_encoding: EndianEncoding::LittleEndian 
+        }
+    }
     
+    pub fn parse(syntax: &String) -> TransferSyntax {
+        if syntax.eq_ignore_ascii_case(EXPLICIT_LE) {
+            return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
+        }
+        else if syntax.eq_ignore_ascii_case(EXPLICIT_BE) {
+            return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::BigEndian };
+        }
+        else if syntax.eq_ignore_ascii_case(IMPLICIT_LE) {
+            return TransferSyntax { vr_encoding: VrEncoding::Implicit, endian_encoding: EndianEncoding::LittleEndian };
+        }
+        else {
+            return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
+        }
+    }
+}    
 
 pub fn not_compressed(syntax: Option<&str>) -> bool {
     match syntax {
@@ -182,24 +205,3 @@ pub fn try_name(transfer_syntax_id: &str) -> Option<&str> {
     return None;
 }
 
-pub fn default() -> TransferSyntax {
-    TransferSyntax { 
-        vr_encoding: VrEncoding::Explicit, 
-        endian_encoding: EndianEncoding::LittleEndian 
-    }
-}
-
-pub fn parse(syntax: &String) -> TransferSyntax {
-    if syntax.eq_ignore_ascii_case(EXPLICIT_LE) {
-        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
-    }
-    else if syntax.eq_ignore_ascii_case(EXPLICIT_BE) {
-        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::BigEndian };
-    }
-    else if syntax.eq_ignore_ascii_case(IMPLICIT_LE) {
-        return TransferSyntax { vr_encoding: VrEncoding::Implicit, endian_encoding: EndianEncoding::LittleEndian };
-    }
-    else {
-        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
-    }
-}

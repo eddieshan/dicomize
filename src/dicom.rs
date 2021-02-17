@@ -95,7 +95,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     let group_peek = reader.read_rewind_u16();
 
     let next_syntax = match group_peek {
-        0x0002_u16 => transfer_syntax::default(),
+        0x0002_u16 => TransferSyntax::default(),
         _          => syntax
     };
 
@@ -209,7 +209,7 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
     let vr = tag.vr;
 
     let child_syntax = match tag_id {
-        TRANSFER_SYNTAX_UID => transfer_syntax::parse(&tag.value),
+        TRANSFER_SYNTAX_UID => TransferSyntax::parse(&tag.value),
         _                   => syntax
     };    
     
@@ -258,7 +258,7 @@ pub fn parse(buffer: Vec<u8>) -> Vec<Node> {
 
     let root = Node { tag: DicomTag::empty(), children: Vec::new() };
     let mut nodes = vec![root];
-    parse_tags(reader, &mut nodes, 0, transfer_syntax::default(), reader.len());
+    parse_tags(reader, &mut nodes, 0, TransferSyntax::default(), reader.len());
     
     nodes
 }
