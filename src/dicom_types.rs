@@ -16,16 +16,6 @@ pub struct TagMarker {
     pub stream_position: usize
 }
 
-pub struct PixelSpacing {
-    x: f64,
-    y: f64
-}
-
-pub struct SliceDimensions {
-    columns: i32,
-    rows: i32
-}
-
 pub struct Node {
     pub tag: DicomTag,
     pub children: Vec<usize>
