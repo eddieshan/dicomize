@@ -4,7 +4,8 @@ use crate::utils;
 use crate::dicom_types::*;
 use crate::vr_type::*;
 use crate::tags::*;
-use crate::transfer_syntax::*;
+use crate::transfer_syntax;
+use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 use crate::readers::BinaryBufferReader;
 
 const STANDARD_PREAMBLE: &str = "DICM";
@@ -24,21 +25,6 @@ fn parse_vr_type (reader: &mut BinaryBufferReader, group: u16, element: u16, vr_
         (_, _, true, _)                 => vr_type,
         (_, _, false, true)             => VrType::LongString,
         (_, _, false, false)            => VrType::Unknown
-    }
-}
-
-fn parse_syntax(syntax: &String) -> TransferSyntax {
-    if syntax.eq_ignore_ascii_case(EXPLICIT_LE) {
-        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
-    }
-    else if syntax.eq_ignore_ascii_case(EXPLICIT_BE) {
-        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::BigEndian };
-    }
-    else if syntax.eq_ignore_ascii_case(IMPLICIT_LE) {
-        return TransferSyntax { vr_encoding: VrEncoding::Implicit, endian_encoding: EndianEncoding::LittleEndian };
-    }
-    else {
-        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
     }
 }
 
@@ -141,7 +127,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     let group_peek = reader.read_rewind_u16();
 
     let next_syntax = match group_peek {
-        0x0002_u16 => default_syntax(),
+        0x0002_u16 => transfer_syntax::default(),
         _          => syntax
     };
 
@@ -267,7 +253,7 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
     let vr = tag.vr;
 
     let child_syntax = match tag_id {
-        TRANSFER_SYNTAX_UID => parse_syntax(&tag.value),
+        TRANSFER_SYNTAX_UID => transfer_syntax::parse(&tag.value),
         _                   => syntax
     };    
     
@@ -331,6 +317,6 @@ pub fn parse_dicom(buffer: Vec<u8>) -> Vec<Node> {
 
     let root = Node { tag: element, children: Vec::new() };
     let mut nodes = vec![root];
-    parse_tags(reader, &mut nodes, 0, default_syntax(), reader.len());
+    parse_tags(reader, &mut nodes, 0, transfer_syntax::default(), reader.len());
     nodes
 }

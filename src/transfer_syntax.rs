@@ -1,5 +1,3 @@
-use crate::dicom_types::*;
-
 // Transfer syntax types and catalogue.
 pub const EXPLICIT_LE: &str = "1.2.840.10008.1.2.1";
 pub const IMPLICIT_LE: &str = "1.2.840.10008.1.2";
@@ -146,7 +144,26 @@ const TRANSFER_SYNTAXES:[(&str, &str); 140] = [
     ("1.2.840.10008.5.1.4.1.1.12.1", "X-Ray Angiographic Image"),
     ("1.2.840.10008.5.1.4.1.1.88.67", "X-Ray Radiation Dose Structured Report"),
     ("1.2.840.10008.5.1.4.1.1.12.2", "X-Ray Radiofluoroscopic")
-    ];
+];
+
+#[derive(Copy, Clone)]
+pub enum VrEncoding {
+    Explicit,
+    Implicit
+}
+
+#[derive(Copy, Clone)]
+pub enum EndianEncoding {
+    LittleEndian,
+    BigEndian
+}
+
+#[derive(Copy, Clone)]
+pub struct TransferSyntax {
+    pub vr_encoding: VrEncoding,
+    pub endian_encoding: EndianEncoding,
+}
+    
 
 pub fn not_compressed(syntax: Option<&str>) -> bool {
     match syntax {
@@ -155,7 +172,7 @@ pub fn not_compressed(syntax: Option<&str>) -> bool {
     }
 }    
 
-pub fn transfer_syntax_name(transfer_syntax_id: &str) -> Option<&str> {
+pub fn try_name(transfer_syntax_id: &str) -> Option<&str> {
     for item in TRANSFER_SYNTAXES.iter() {
         if item.0 == transfer_syntax_id {
             return Some(item.1);
@@ -165,9 +182,24 @@ pub fn transfer_syntax_name(transfer_syntax_id: &str) -> Option<&str> {
     return None;
 }
 
-pub fn default_syntax() -> TransferSyntax {
+pub fn default() -> TransferSyntax {
     TransferSyntax { 
         vr_encoding: VrEncoding::Explicit, 
         endian_encoding: EndianEncoding::LittleEndian 
+    }
+}
+
+pub fn parse(syntax: &String) -> TransferSyntax {
+    if syntax.eq_ignore_ascii_case(EXPLICIT_LE) {
+        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
+    }
+    else if syntax.eq_ignore_ascii_case(EXPLICIT_BE) {
+        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::BigEndian };
+    }
+    else if syntax.eq_ignore_ascii_case(IMPLICIT_LE) {
+        return TransferSyntax { vr_encoding: VrEncoding::Implicit, endian_encoding: EndianEncoding::LittleEndian };
+    }
+    else {
+        return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
     }
 }
