@@ -1,3 +1,5 @@
+use crate::vr_type::VrType;
+
 pub struct DicomTag {
     pub id: (u16, u16),
     pub syntax: TransferSyntax,
@@ -23,38 +25,6 @@ pub enum EndianEncoding {
 pub struct TransferSyntax {
     pub vr_encoding: VrEncoding,
     pub endian_encoding: EndianEncoding,
-}
-
-#[derive(Copy, Clone)]
-pub enum VrType {
-    OtherByte,
-    OtherFloat,
-    OtherWord,
-    Unknown,
-    UnlimitedText,
-    SequenceOfItems,
-    ApplicationEntity,
-    AgeString,
-    CodeString,
-    Date,
-    DateTime,
-    LongText,
-    PersonName,
-    ShortString,
-    ShortText,
-    Time,
-    DecimalString,
-    IntegerString,
-    LongString,
-    Uid,
-    Attribute,
-    UnsignedLong,
-    UnsignedShort,
-    SignedLong,
-    SignedShort,
-    Float,
-    Double,
-    Delimiter
 }
 
 #[derive(Copy, Clone)]

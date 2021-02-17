@@ -1,9 +1,9 @@
 use std::convert::TryFrom;
 
 use crate::dicom_types::*;
+use crate::vr_type::*;
 use crate::tags::*;
 use crate::transfer_syntax::*;
-use crate::vr_types::*;
 use crate::readers::BinaryBufferReader;
 
 const STANDARD_PREAMBLE: &str = "DICM";

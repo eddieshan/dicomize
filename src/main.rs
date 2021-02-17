@@ -1,5 +1,5 @@
 mod dicom_types;
-mod vr_types;
+mod vr_type;
 mod sop_class;
 mod transfer_syntax;
 mod tags;

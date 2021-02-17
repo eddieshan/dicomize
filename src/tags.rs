@@ -1,4 +1,4 @@
-use crate::dicom_types::{VrType};
+use crate::vr_type::VrType;
 
 const VR_FIELD_SIZE: i32 = 2;
 
