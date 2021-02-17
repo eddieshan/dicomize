@@ -240,7 +240,7 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
     }
 }
 
-pub fn parse_dicom(buffer: Vec<u8>) -> Vec<Node> {
+pub fn parse(buffer: Vec<u8>) -> Vec<Node> {
     // Dicom file header,
     // - Fixed preamble not to be used: 128 bytes.
     // - DICOM Prefix "DICM": 4 bytes.

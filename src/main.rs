@@ -1,14 +1,13 @@
 mod utils;
 mod errors;
+mod readers;
 
 mod vr_type;
 mod sop_class;
 mod transfer_syntax;
 mod tags;
 mod dicom_tree;
-
-mod readers;
-mod parser;
+mod dicom;
 
 use std::env;
 use std::fs;
@@ -22,7 +21,7 @@ fn process_dcim(dcim_file_path: &str) {
 
     match fs::read(dcim_file_path) {
         Ok(buffer) => {
-            let _ = parser::parse_dicom(buffer);
+            let _ = dicom::parse(buffer);
         },
         Err(err) => println!("ERROR: COULD NOT LOAD {}. {}", dcim_file_path, err)
     };
