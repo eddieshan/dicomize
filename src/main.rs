@@ -1,10 +1,12 @@
 mod utils;
-mod dicom_types;
+mod errors;
+
 mod vr_type;
 mod sop_class;
 mod transfer_syntax;
 mod tags;
-mod errors;
+mod dicom_tree;
+
 mod readers;
 mod parser;
 

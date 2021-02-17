@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 
 use crate::utils;
-use crate::dicom_types::*;
+use crate::dicom_tree::*;
 use crate::vr_type::*;
 use crate::tags::*;
 use crate::transfer_syntax;
@@ -9,7 +9,6 @@ use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 use crate::readers::BinaryBufferReader;
 
 const STANDARD_PREAMBLE: &str = "DICM";
-const UNKNOWN_VALUE: &str = "UNKNOWN";
 
 fn parse_vr_type (reader: &mut BinaryBufferReader, group: u16, element: u16, vr_encoding: VrEncoding) -> VrType {
     let vr_type = tag_vr_type(group, element);
@@ -51,47 +50,23 @@ fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
     }
 }
 
-fn basic_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, value: String) -> DicomTag {
-    DicomTag {
-        id: id,
-        syntax: syntax,
-        vr: vr,
-        vm: None,
-        marker: marker,
-        value: value
-    }
-}
-
 fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
-
     match usize::try_from(marker.value_length) {
         Ok(length) => {
             let value = reader.read_str(length);
             println!("TEXT TAG | LENGTH: {} | VALUE: {}", length, value);
-            basic_tag(id, syntax, vr, marker, String::from(value))
+            DicomTag::simple(id, syntax, vr, marker, String::from(value))
         },        
         Err(_) => panic!("Tag marker has invalid value length") // TODO: use proper error propagation instead of panic.
     }
 }
 
-fn vm_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, vm: i64, marker: TagMarker, value: String) -> DicomTag {
-    DicomTag {
-        id: id,
-        syntax: syntax,
-        vr: vr,
-        vm: Some(vm),
-        marker: marker,
-        value: value
-    }
-}
-
 fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, length: i32) -> DicomTag {
     let marker = marker(reader, length);
-    basic_tag(id, syntax, vr, marker, String::from(""))
+    DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
 
 fn read_number_series(reader: &mut BinaryBufferReader, size: i64, length: i32) -> (String, i64) {
-
     match usize::try_from(size) {
         Ok(s) => reader.jump(s),
         Err(err) => panic!("INVALID NUMBER SIZE") // TODO: propagate Error upwards instead of instant panic here.
@@ -110,14 +85,7 @@ fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferS
 
     println!("NUMBER TAG | VALUE: {} | VM: {} | SIZE: {} | LENGTH: {}", value, vm, size, marker.value_length);
 
-    DicomTag {
-        id: id,
-        syntax: syntax,
-        vr: vr,
-        vm: Some(vm),
-        marker: marker,
-        value: value
-    }
+    DicomTag::multiple(id, syntax, vr, vm, marker, value)
 }
 
 fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag {
@@ -180,7 +148,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
                     let value = endian_reader.read_str(length);
                     match i64::try_from(value.split('\\').count()) {
                         Ok(vm) => {
-                            vm_tag(tag_id, next_syntax, vr, vm, marker, String::from(value))
+                            DicomTag::multiple(tag_id, next_syntax, vr, vm, marker, String::from(value))
                         },
                         Err(_) => panic!("Tag marker has invalid value length")
                     }                    
@@ -231,18 +199,6 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
             let length = endian_reader.read_i32();
             ignored_tag(endian_reader, tag_id, syntax, vr, length)
         }
-    };
-
-    DicomTag {
-        id: (0_u16, 0_u16),
-        syntax: next_syntax,
-        vr: VrType::Unknown,
-        vm: None,
-        marker: TagMarker {
-            value_length: 0,
-            stream_position: 0
-        },
-        value: String::from(UNKNOWN_VALUE)
     }
 }
 
@@ -300,23 +256,9 @@ pub fn parse_dicom(buffer: Vec<u8>) -> Vec<Node> {
         reader.seek(0);
     }
 
-    let element = DicomTag {
-        id: (0_u16, 0_u16),
-        syntax: TransferSyntax { 
-            vr_encoding: VrEncoding::Explicit, 
-            endian_encoding: EndianEncoding::LittleEndian
-        },
-        vr: VrType::Unknown,
-        vm: None,
-        marker: TagMarker {
-            value_length: 0,
-            stream_position: 0
-        },
-        value: String::from(UNKNOWN_VALUE)
-    };
-
-    let root = Node { tag: element, children: Vec::new() };
+    let root = Node { tag: DicomTag::empty(), children: Vec::new() };
     let mut nodes = vec![root];
     parse_tags(reader, &mut nodes, 0, transfer_syntax::default(), reader.len());
+    
     nodes
 }
