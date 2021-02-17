@@ -4,7 +4,6 @@ use crate::utils;
 use crate::dicom_tree::*;
 use crate::vr_type::*;
 use crate::tags::*;
-use crate::transfer_syntax;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 use crate::readers::BinaryBufferReader;
 
@@ -33,14 +32,7 @@ fn read_vr_encoding_length(reader: &mut BinaryBufferReader, encoding: VrEncoding
         VrEncoding::Implicit => reader.read_i32()
     };
 
-    marker(reader, length)
-}
-
-fn marker(reader: &mut BinaryBufferReader, length: i32) -> TagMarker {
-    TagMarker {
-        value_length: length,
-        stream_position: reader.pos()
-    }
+    TagMarker::new(reader.pos(), length)
 }
 
 fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
@@ -62,7 +54,7 @@ fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyn
 }
 
 fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, length: i32) -> DicomTag {
-    let marker = marker(reader, length);
+    let marker = TagMarker::new(reader.pos(), length);
     DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
 
@@ -116,14 +108,14 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
         VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::Unknown => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
             let length = endian_reader.read_i32();
-            let marker = marker(endian_reader, length);
+            let marker = TagMarker::new(endian_reader.pos(), length);
 
             text_tag(endian_reader, tag_id, next_syntax, vr, marker)
         },
         VrType::UnlimitedText => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
             let length = endian_reader.read_i32();
-            let marker = marker(endian_reader, length);
+            let marker = TagMarker::new(endian_reader.pos(), length);
 
             text_tag(endian_reader, tag_id, next_syntax, vr, marker)
         },

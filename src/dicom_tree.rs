@@ -9,6 +9,15 @@ pub struct TagMarker {
     pub stream_position: usize
 }
 
+impl TagMarker {
+    pub fn new(pos: usize, length: i32) -> TagMarker {
+        TagMarker {
+            value_length: length,
+            stream_position: pos
+        }
+    }
+}
+
 pub struct DicomTag {
     pub id: (u16, u16),
     pub syntax: TransferSyntax,
