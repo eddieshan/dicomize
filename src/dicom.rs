@@ -1,4 +1,4 @@
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 use crate::utils;
 use crate::dicom_tree::*;
@@ -58,22 +58,20 @@ fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: Transfer
     DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
 
-fn read_number_series(reader: &mut BinaryBufferReader, size: i64, length: i32) -> (String, i64) {
-    match usize::try_from(size) {
-        Ok(s) => reader.jump(s),
-        Err(err) => panic!("INVALID NUMBER SIZE") // TODO: propagate Error upwards instead of instant panic here.
-    }
+fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
+    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
 
-    let value = String::from("");
+    let (size, value) = match vr {
+        VrType::UnsignedLong  => (4, reader.read_u32().to_string()),
+        VrType::UnsignedShort => (2, reader.read_u16().to_string()),
+        VrType::SignedLong    => (4, reader.read_i32().to_string()),
+        VrType::SignedShort   => (2, reader.read_i16().to_string()),
+        VrType::Float         => (4, reader.read_f32().to_string()),
+        VrType::Double        => (8, reader.read_f64().to_string()),
+        _                     => panic!("Tag value is not a supported numeric VR type")
+    };    
 
-    let vm = (i64::from(length))/size;
-
-    // TODO: calculate value as concatenation of multiple reads.
-    (value, vm)
-}
-
-fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, size: i64) -> DicomTag {
-    let (value, vm) = read_number_series(reader, size, marker.value_length);
+    let vm = i64::from(marker.value_length)/size;
 
     println!("NUMBER TAG | VALUE: {} | VM: {} | SIZE: {} | LENGTH: {}", value, vm, size, marker.value_length);
 
@@ -163,30 +161,12 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
                 value: String::from("")
             }
         },
-        VrType::UnsignedLong => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
-        },
-        VrType::UnsignedShort => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 2)
-        },
-        VrType::SignedLong => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
-        },
-        VrType::SignedShort => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 2)
-        },
-        VrType::Float => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
-        },
-        VrType::Double => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 8)
-        },
+        VrType::UnsignedLong => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::UnsignedShort => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::SignedLong => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::SignedShort => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::Float => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::Double => number_tag(endian_reader, tag_id, next_syntax, vr),
         VrType::Delimiter => {
             let length = endian_reader.read_i32();
             ignored_tag(endian_reader, tag_id, syntax, vr, length)
