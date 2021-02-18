@@ -1,4 +1,4 @@
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 
 use crate::utils;
 use crate::dicom_tree::*;
@@ -161,9 +161,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
                 Ok(length) => {
                     let value = endian_reader.read_str(length);
                     match i64::try_from(value.split('\\').count()) {
-                        Ok(vm) => {
-                            DicomTag::multiple(tag_id, next_syntax, vr, vm, marker, String::from(value))
-                        },
+                        Ok(vm) => DicomTag::multiple(tag_id, next_syntax, vr, vm, marker, String::from(value)),
                         Err(_) => panic!("Tag marker has invalid value length")
                     }                    
                 },
@@ -194,13 +192,11 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
 
         let next_limit = match (vr, value_length) {
             (VrType::SequenceOfItems, -1) => Some(reader.len()),
-            (VrType::SequenceOfItems, _)   => {
-                match usize::try_from(value_length) {
-                    Ok(v) => Some(reader.pos() + v),
-                    Err(_) => None
-                }
+            (VrType::SequenceOfItems, _)  => match usize::try_from(value_length) {
+                Ok(v) => Some(reader.pos() + v),
+                Err(_) => None
             },
-            (_, _)                          => None
+            (_, _)                        => None
         };
 
         if let Some(l) = next_limit {            
