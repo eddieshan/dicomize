@@ -114,11 +114,14 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     let vr = parse_vr_type(endian_reader, group, element, syntax.vr_encoding);
 
     match vr {
-        VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::Unknown => {
-            skip_reserved(endian_reader, next_syntax.vr_encoding);
-            text_tag(endian_reader, tag_id, next_syntax, vr)
-        },
-        VrType::UnlimitedText => {
+        VrType::Delimiter      => ignored_tag(endian_reader, tag_id, syntax, vr),
+        VrType::UnsignedLong   => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::UnsignedShort  => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::SignedLong     => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::SignedShort    => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::Float          => number_tag(endian_reader, tag_id, next_syntax, vr),
+        VrType::Double         => number_tag(endian_reader, tag_id, next_syntax, vr),        
+        VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::UnlimitedText | VrType::Unknown => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
             text_tag(endian_reader, tag_id, next_syntax, vr)
         },
@@ -162,14 +165,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
                 marker: marker,
                 value: String::from("")
             }
-        },
-        VrType::UnsignedLong => number_tag(endian_reader, tag_id, next_syntax, vr),
-        VrType::UnsignedShort => number_tag(endian_reader, tag_id, next_syntax, vr),
-        VrType::SignedLong => number_tag(endian_reader, tag_id, next_syntax, vr),
-        VrType::SignedShort => number_tag(endian_reader, tag_id, next_syntax, vr),
-        VrType::Float => number_tag(endian_reader, tag_id, next_syntax, vr),
-        VrType::Double => number_tag(endian_reader, tag_id, next_syntax, vr),
-        VrType::Delimiter => ignored_tag(endian_reader, tag_id, syntax, vr)
+        }
     }
 }
 
