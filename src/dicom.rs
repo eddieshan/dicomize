@@ -36,6 +36,7 @@ fn read_vr_encoding_length(reader: &mut BinaryBufferReader, encoding: VrEncoding
 }
 
 fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
+    println!("RESERVED TAG");
     match encoding {
         VrEncoding::Explicit => reader.jump(2),
         _                    => {}
@@ -46,7 +47,7 @@ fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyn
     match usize::try_from(marker.value_length) {
         Ok(length) => {
             let value = reader.read_str(length);
-            println!("TEXT TAG | LENGTH: {} | VALUE: {}", length, value);
+            println!("TEXT TAG ({}, {}) | LENGTH: {} | VALUE: {}", id.0, id.1, length, value);
             DicomTag::simple(id, syntax, vr, marker, String::from(value))
         },        
         Err(_) => panic!("Tag marker has invalid value length") // TODO: use proper error propagation instead of panic.
@@ -54,6 +55,7 @@ fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyn
 }
 
 fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, length: i32) -> DicomTag {
+    println!("IGNORED TAG ({}, {})", id.0, id.1);
     let marker = TagMarker::new(reader.pos(), length);
     DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
@@ -73,7 +75,7 @@ fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferS
 
     let vm = i64::from(marker.value_length)/size;
 
-    println!("NUMBER TAG | VALUE: {} | VM: {} | SIZE: {} | LENGTH: {}", value, vm, size, marker.value_length);
+    println!("NUMBER TAG ({}, {}) | VM: {} | SIZE: {} | LENGTH: {} | VALUE: {}", id.0, id.1, vm, size, marker.value_length, value);
 
     DicomTag::multiple(id, syntax, vr, vm, marker, value)
 }
@@ -97,8 +99,6 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     let group = endian_reader.read_u16();
     let element = endian_reader.read_u16();
     let tag_id = (group, element);
-
-    println!("TAG | ({}, {})", group, element);
 
     let vr = parse_vr_type(endian_reader, group, element, syntax.vr_encoding);
 
