@@ -71,6 +71,24 @@ fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: Transfer
     DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
 
+fn attribute_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax, vr: VrType) -> DicomTag {
+    // 2 bytes value length, 4 bytes value. {
+    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
+    let next_group = reader.read_u16();
+    let next_element = reader.read_u16();
+
+    println!("ATTRIBUTE TAG ({}, {})", next_group, next_element);
+
+    DicomTag {
+        id: (next_group, next_element),
+        syntax: syntax,
+        vr: vr,
+        vm: None,
+        marker: marker,
+        value: String::from("")
+    }
+}
+
 fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
     let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
 
@@ -115,6 +133,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
 
     match vr {
         VrType::Delimiter      => ignored_tag(endian_reader, tag_id, syntax, vr),
+        VrType::Attribute      => attribute_tag(endian_reader, next_syntax, vr),
         VrType::UnsignedLong   => number_tag(endian_reader, tag_id, next_syntax, vr),
         VrType::UnsignedShort  => number_tag(endian_reader, tag_id, next_syntax, vr),
         VrType::SignedLong     => number_tag(endian_reader, tag_id, next_syntax, vr),
@@ -150,22 +169,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
                 },
                 Err(_) => panic!("Tag marker has invalid value length")
             }
-        },
-        VrType::Attribute => {
-            // 2 bytes value length, 4 bytes value. {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            let next_group = endian_reader.read_u16();
-            let next_element = endian_reader.read_u16();
-
-            DicomTag {
-                id: (next_group, next_element),
-                syntax: syntax,
-                vr: vr,
-                vm: None,
-                marker: marker,
-                value: String::from("")
-            }
-        }
+        }        
     }
 }
 
