@@ -43,7 +43,12 @@ fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
     }
 }
 
-fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
+fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
+    let marker = read_marker(reader);
+    custom_text_tag(reader, id, syntax, vr, marker)
+}
+
+fn custom_text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
     match usize::try_from(marker.value_length) {
         Ok(length) => {
             let value = reader.read_str(length);
@@ -54,9 +59,15 @@ fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyn
     }
 }
 
-fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, length: i32) -> DicomTag {
+fn read_marker(reader: &mut BinaryBufferReader) -> TagMarker {
+    let length = reader.read_i32();
+    let pos = reader.pos();
+    TagMarker::new(pos, length)
+}
+
+fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
     println!("IGNORED TAG ({}, {})", id.0, id.1);
-    let marker = TagMarker::new(reader.pos(), length);
+    let marker = read_marker(reader);
     DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
 
@@ -71,7 +82,7 @@ fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferS
         VrType::Float         => (4, reader.read_f32().to_string()),
         VrType::Double        => (8, reader.read_f64().to_string()),
         _                     => panic!("Tag value is not a supported numeric VR type")
-    };    
+    };
 
     let vm = i64::from(marker.value_length)/size;
 
@@ -105,30 +116,21 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     match vr {
         VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::Unknown => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
-            let length = endian_reader.read_i32();
-            let marker = TagMarker::new(endian_reader.pos(), length);
-
-            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+            text_tag(endian_reader, tag_id, next_syntax, vr)
         },
         VrType::UnlimitedText => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
-            let length = endian_reader.read_i32();
-            let marker = TagMarker::new(endian_reader.pos(), length);
-
-            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+            text_tag(endian_reader, tag_id, next_syntax, vr)
         },
         VrType::SequenceOfItems => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
-            let length = endian_reader.read_i32();
-
-            ignored_tag(endian_reader, tag_id, syntax, vr, length)
+            ignored_tag(endian_reader, tag_id, syntax, vr)
         },
         VrType::ApplicationEntity | VrType::AgeString | VrType::CodeString | VrType::Date | 
         VrType::DateTime | VrType::LongText | VrType::PersonName | VrType::ShortString | 
         VrType::ShortText | VrType::Time | VrType::Uid => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-
-            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+            custom_text_tag(endian_reader, tag_id, next_syntax, vr, marker)
         },
         VrType::DecimalString | VrType::IntegerString | VrType::LongString => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
@@ -167,10 +169,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
         VrType::SignedShort => number_tag(endian_reader, tag_id, next_syntax, vr),
         VrType::Float => number_tag(endian_reader, tag_id, next_syntax, vr),
         VrType::Double => number_tag(endian_reader, tag_id, next_syntax, vr),
-        VrType::Delimiter => {
-            let length = endian_reader.read_i32();
-            ignored_tag(endian_reader, tag_id, syntax, vr, length)
-        }
+        VrType::Delimiter => ignored_tag(endian_reader, tag_id, syntax, vr)
     }
 }
 
