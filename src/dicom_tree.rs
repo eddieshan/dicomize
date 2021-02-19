@@ -18,13 +18,23 @@ impl TagMarker {
     }
 }
 
+pub enum TagValue {
+    String(String),
+    U32(u32),
+    I32(i32),
+    U16(u16),
+    I16(i16),
+    F32(f32),
+    F64(f64)
+}
+
 pub struct DicomTag {
     pub id: (u16, u16),
     pub syntax: TransferSyntax,
     pub vr: VrType,
     pub vm: Option<i64>,
     pub marker: TagMarker,
-    pub value: String
+    pub value: TagValue
 }
 
 impl DicomTag {
@@ -41,7 +51,7 @@ impl DicomTag {
                 value_length: 0,
                 stream_position: 0
             },
-            value: String::from(UNKNOWN_VALUE)
+            value: TagValue::String(String::from(UNKNOWN_VALUE))
         }        
     }
 
@@ -52,11 +62,11 @@ impl DicomTag {
             vr: vr,
             vm: None,
             marker: marker,
-            value: value
+            value: TagValue::String(value)
         }
     }
 
-    pub fn multiple(id: (u16, u16), syntax: TransferSyntax, vr: VrType, vm: i64, marker: TagMarker, value: String) -> DicomTag {
+    pub fn multiple(id: (u16, u16), syntax: TransferSyntax, vr: VrType, vm: i64, marker: TagMarker, value: TagValue) -> DicomTag {
         DicomTag {
             id: id,
             syntax: syntax,
