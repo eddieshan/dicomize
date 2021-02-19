@@ -19,6 +19,22 @@ impl BinaryBufferReader {
         BinaryBufferReader { pos: 0, buffer: buffer }    
     }
 
+    fn read_64<T>(&mut self, convert: fn([u8; 8]) -> T) -> T {
+        let value = convert([
+            self.buffer[self.pos], 
+            self.buffer[self.pos + 1], 
+            self.buffer[self.pos + 2], 
+            self.buffer[self.pos + 3],
+            self.buffer[self.pos + 4],
+            self.buffer[self.pos + 5],
+            self.buffer[self.pos + 6],
+            self.buffer[self.pos + 7]
+        ]);
+        self.pos = self.pos + 8;
+
+        value
+    }
+
     fn read_32<T>(&mut self, convert: fn([u8; 4]) -> T) -> T {
         let value = convert([
             self.buffer[self.pos], 
@@ -29,7 +45,7 @@ impl BinaryBufferReader {
         self.pos = self.pos + 4;
 
         value
-    }
+    }    
 
     fn read_16<T>(&mut self, convert: fn([u8; 2]) -> T) -> T {
         let value = convert([
@@ -79,6 +95,10 @@ impl BinaryBufferReader {
         self.read_16(u16::from_ne_bytes)
     }
 
+    pub fn read_u32(&mut self) -> u32 {
+        self.read_32(u32::from_ne_bytes)
+    }
+
     pub fn read_rewind_u16(&mut self) -> u16 {
         self.read_rewind_16(u16::from_ne_bytes)
     }    
@@ -86,6 +106,10 @@ impl BinaryBufferReader {
     pub fn read_f32(&mut self) -> f32 {
         self.read_32(f32::from_ne_bytes)
     }
+
+    pub fn read_f64(&mut self) -> f64 {
+        self.read_64(f64::from_ne_bytes)
+    }    
 
     pub fn seek(&mut self, position: usize) {
         self.pos = position;

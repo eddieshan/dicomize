@@ -9,6 +9,13 @@ use crate::readers::BinaryBufferReader;
 
 const STANDARD_PREAMBLE: &str = "DICM";
 
+const U16_SIZE: usize = 2;
+const I16_SIZE: usize = 2;
+const U32_SIZE: usize = 4;
+const I32_SIZE: usize = 4;
+const F32_SIZE: usize = 4;
+const F64_SIZE: usize = 8;
+
 fn parse_vr_type (reader: &mut BinaryBufferReader, group: u16, element: u16, vr_encoding: VrEncoding) -> VrType {
     let vr_type = tag_vr_type(group, element);
     let is_even_group = utils::even(group);
@@ -31,53 +38,124 @@ fn read_vr_encoding_length(reader: &mut BinaryBufferReader, encoding: VrEncoding
         VrEncoding::Explicit => i32::from(reader.read_i16()),
         VrEncoding::Implicit => reader.read_i32()
     };
-
     TagMarker::new(reader.pos(), length)
 }
 
 fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
+    println!("RESERVED TAG");
     match encoding {
         VrEncoding::Explicit => reader.jump(2),
         _                    => {}
     }
 }
 
-fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
-    match usize::try_from(marker.value_length) {
-        Ok(length) => {
+fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
+    let marker = read_marker(reader);
+    custom_text_tag(reader, id, syntax, vr, marker)
+}
+
+fn custom_text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
+    match marker.value_length {
+        Some(length) => {
             let value = reader.read_str(length);
-            println!("TEXT TAG | LENGTH: {} | VALUE: {}", length, value);
+            println!("TEXT TAG ({}, {}) | LENGTH: {} | VALUE: {}", id.0, id.1, length, value);
             DicomTag::simple(id, syntax, vr, marker, String::from(value))
         },        
-        Err(_) => panic!("Tag marker has invalid value length") // TODO: use proper error propagation instead of panic.
+        None => panic!("Tag marker has invalid value length") // TODO: marker value length should not be Option at this point.
     }
 }
 
-fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, length: i32) -> DicomTag {
-    let marker = TagMarker::new(reader.pos(), length);
+fn read_marker(reader: &mut BinaryBufferReader) -> TagMarker {
+    let length = reader.read_i32();
+    let pos = reader.pos();
+    TagMarker::new(pos, length)
+}
+
+fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
+    println!("IGNORED TAG ({}, {})", id.0, id.1);
+    let marker = read_marker(reader);
     DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
 
-fn read_number_series(reader: &mut BinaryBufferReader, size: i64, length: i32) -> (String, i64) {
-    match usize::try_from(size) {
-        Ok(s) => reader.jump(s),
-        Err(err) => panic!("INVALID NUMBER SIZE") // TODO: propagate Error upwards instead of instant panic here.
+fn attribute_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax, vr: VrType) -> DicomTag {
+    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
+    let next_group = reader.read_u16();
+    let next_element = reader.read_u16();
+
+    println!("ATTRIBUTE TAG ({}, {})", next_group, next_element);
+
+    DicomTag {
+        id: (next_group, next_element),
+        syntax: syntax,
+        vr: vr,
+        vm: None,
+        marker: marker,
+        value: TagValue::String(String::from(""))
     }
-
-    let value = String::from("");
-
-    let vm = (i64::from(length))/size;
-
-    // TODO: calculate value as concatenation of multiple reads.
-    (value, vm)
 }
 
-fn number_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, size: i64) -> DicomTag {
-    let (value, vm) = read_number_series(reader, size, marker.value_length);
+fn u16_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    TagValue::U16(reader.read_u16())
+}
 
-    println!("NUMBER TAG | VALUE: {} | VM: {} | SIZE: {} | LENGTH: {}", value, vm, size, marker.value_length);
+fn i16_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    TagValue::I16(reader.read_i16())
+}
 
-    DicomTag::multiple(id, syntax, vr, vm, marker, value)
+fn u32_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    TagValue::U32(reader.read_u32())
+}
+
+fn i32_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    TagValue::I32(reader.read_i32())
+}
+
+fn f32_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    TagValue::F32(reader.read_f32())
+}
+
+fn f64_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    TagValue::F64(reader.read_f64())
+}
+
+fn numeric_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, size: usize, read_value: fn(&mut BinaryBufferReader) -> TagValue) -> DicomTag {
+    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
+
+    match marker.value_length {
+        Some(length) => {
+            match i64::try_from(length/size) {
+                Ok(vm) => {
+                    let value = match vm {
+                        1 => read_value(reader),
+                        _ => {
+                            reader.jump(length);
+                            TagValue::String(String::from(""))
+                        }
+                    };
+
+                    println!("NUMBER TAG ({}, {}) | VM: {} | SIZE: {} | LENGTH: {}", id.0, id.1, vm, size, length);
+                    DicomTag::multiple(id, syntax, vr, vm, marker, value)        
+                },
+                Err(_) => panic!("VM has invalid value")  // TODO: propagate Error upwards instead of instant panic here.
+            }
+        },
+        None => panic!("Tag marker has invalid value length") // TODO: marker value length should not be Option at this point.
+    }    
+}
+
+fn numeric_string_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
+    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
+
+    match marker.value_length {
+        Some(length) => {
+            let value = reader.read_str(length);
+            match i64::try_from(value.split('\\').count()) {
+                Ok(vm) => DicomTag::multiple(id, syntax, vr, vm, marker, TagValue::String(String::from(value))),
+                Err(_) => panic!("VM has invalid value")
+            }                    
+        },                
+        None => panic!("Tag marker has invalid value length") // TODO: marker value length should not be Option at this point.
+    }    
 }
 
 fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag {
@@ -100,97 +178,32 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     let element = endian_reader.read_u16();
     let tag_id = (group, element);
 
-    println!("TAG | ({}, {})", group, element);
-
     let vr = parse_vr_type(endian_reader, group, element, syntax.vr_encoding);
 
     match vr {
-        VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::Unknown => {
+        VrType::Delimiter      => ignored_tag(endian_reader, tag_id, syntax, vr),
+        VrType::Attribute      => attribute_tag(endian_reader, next_syntax, vr),
+        VrType::UnsignedShort  => numeric_tag(endian_reader, tag_id, next_syntax, vr, U16_SIZE, u16_tag),
+        VrType::SignedShort    => numeric_tag(endian_reader, tag_id, next_syntax, vr, I16_SIZE, i16_tag),
+        VrType::UnsignedLong   => numeric_tag(endian_reader, tag_id, next_syntax, vr, U32_SIZE, u32_tag),
+        VrType::SignedLong     => numeric_tag(endian_reader, tag_id, next_syntax, vr, I32_SIZE, i32_tag),
+        VrType::Float          => numeric_tag(endian_reader, tag_id, next_syntax, vr, F32_SIZE, f32_tag),
+        VrType::Double         => numeric_tag(endian_reader, tag_id, next_syntax, vr, F64_SIZE, f64_tag),
+        VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::UnlimitedText | VrType::Unknown => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
-            let length = endian_reader.read_i32();
-            let marker = TagMarker::new(endian_reader.pos(), length);
-
-            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
-        },
-        VrType::UnlimitedText => {
-            skip_reserved(endian_reader, next_syntax.vr_encoding);
-            let length = endian_reader.read_i32();
-            let marker = TagMarker::new(endian_reader.pos(), length);
-
-            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+            text_tag(endian_reader, tag_id, next_syntax, vr)
         },
         VrType::SequenceOfItems => {
             skip_reserved(endian_reader, next_syntax.vr_encoding);
-            let length = endian_reader.read_i32();
-
-            ignored_tag(endian_reader, tag_id, syntax, vr, length)
+            ignored_tag(endian_reader, tag_id, syntax, vr)
         },
         VrType::ApplicationEntity | VrType::AgeString | VrType::CodeString | VrType::Date | 
         VrType::DateTime | VrType::LongText | VrType::PersonName | VrType::ShortString | 
         VrType::ShortText | VrType::Time | VrType::Uid => {
             let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-
-            text_tag(endian_reader, tag_id, next_syntax, vr, marker)
+            custom_text_tag(endian_reader, tag_id, next_syntax, vr, marker)
         },
-        VrType::DecimalString | VrType::IntegerString | VrType::LongString => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-
-            match usize::try_from(marker.value_length) {
-                Ok(length) => {
-                    let value = endian_reader.read_str(length);
-                    match i64::try_from(value.split('\\').count()) {
-                        Ok(vm) => {
-                            DicomTag::multiple(tag_id, next_syntax, vr, vm, marker, String::from(value))
-                        },
-                        Err(_) => panic!("Tag marker has invalid value length")
-                    }                    
-                },
-                Err(_) => panic!("Tag marker has invalid value length")
-            }
-        },
-        VrType::Attribute => {
-            // 2 bytes value length, 4 bytes value. {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            let next_group = endian_reader.read_u16();
-            let next_element = endian_reader.read_u16();
-
-            DicomTag {
-                id: (next_group, next_element),
-                syntax: syntax,
-                vr: vr,
-                vm: None,
-                marker: marker,
-                value: String::from("")
-            }
-        },
-        VrType::UnsignedLong => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
-        },
-        VrType::UnsignedShort => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 2)
-        },
-        VrType::SignedLong => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
-        },
-        VrType::SignedShort => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 2)
-        },
-        VrType::Float => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 4)
-        },
-        VrType::Double => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            number_tag(endian_reader, tag_id, next_syntax, vr, marker, 8)
-        },
-        VrType::Delimiter => {
-            let length = endian_reader.read_i32();
-            ignored_tag(endian_reader, tag_id, syntax, vr, length)
-        }
+        VrType::DecimalString | VrType::IntegerString | VrType::LongString => numeric_string_tag(endian_reader, tag_id, next_syntax, vr)
     }
 }
 
@@ -200,28 +213,23 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
     let tag_id = tag.id;
     let vr = tag.vr;
 
-    let child_syntax = match tag_id {
-        TRANSFER_SYNTAX_UID => TransferSyntax::parse(&tag.value),
-        _                   => syntax
-    };    
-    
+    let child_syntax = match (tag_id, &tag.value) {
+        (TRANSFER_SYNTAX_UID, TagValue::String(s))  => TransferSyntax::parse(&s),
+        (TRANSFER_SYNTAX_UID, _)                    => panic!("Transfer syntax cannot be encoded in a numeric value"),
+        (_, _)                                      => syntax
+    };
+
     let child = Node { tag: tag, children: Vec::new() };
     nodes.push(child);
 
     let child_index = nodes.len() - 1;
     nodes[parent_index].children.push(child_index);     
 
-    if reader.pos() < limit_pos && tag_id != SEQUENCE_DELIMITER {               
-
+    if reader.pos() < limit_pos && tag_id != SEQUENCE_DELIMITER {
         let next_limit = match (vr, value_length) {
-            (VrType::SequenceOfItems, -1) => Some(reader.len()),
-            (VrType::SequenceOfItems, _)   => {
-                match usize::try_from(value_length) {
-                    Ok(v) => Some(reader.pos() + v),
-                    Err(_) => None
-                }
-            },
-            (_, _)                          => None
+            (VrType::SequenceOfItems, None)    => Some(reader.len()),
+            (VrType::SequenceOfItems, Some(l)) => Some(reader.pos() + l),
+            (_, _)                             => None
         };
 
         if let Some(l) = next_limit {            
