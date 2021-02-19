@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use crate::vr_type::VrType;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 
@@ -5,14 +7,24 @@ pub const UNKNOWN_VALUE: &str = "UNKNOWN";
 
 #[derive(Copy, Clone)]
 pub struct TagMarker {
-    pub value_length: i32,
+    pub value_length: Option<usize>,
     pub stream_position: usize
 }
 
 impl TagMarker {
     pub fn new(pos: usize, length: i32) -> TagMarker {
+        
+        // Dicom admits a negative value length.
+        // This breaks type safety since length should be usize.
+        // To improve the safety negative values are converted to None.
+        // Other values are unwrapped which is safe for the supported architectures, x32 and x64.
+        let value_length = match length < 0 {
+            true => None,
+            false => Some(usize::try_from(length).unwrap())
+        };
+
         TagMarker {
-            value_length: length,
+            value_length: value_length,
             stream_position: pos
         }
     }
@@ -48,7 +60,7 @@ impl DicomTag {
             vr: VrType::Unknown,
             vm: None,
             marker: TagMarker {
-                value_length: 0,
+                value_length: None,
                 stream_position: 0
             },
             value: TagValue::String(String::from(UNKNOWN_VALUE))
