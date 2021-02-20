@@ -15,7 +15,8 @@ pub enum TagValue {
     I16(i16),
     F32(f32),
     F64(f64),
-    Multiple(usize, String)
+    Multiple(usize, String),
+    MultipleString(usize, String)
 }
 
 pub struct DicomTag {

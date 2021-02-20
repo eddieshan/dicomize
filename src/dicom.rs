@@ -100,7 +100,10 @@ fn numeric_tag(reader: &mut BinaryBufferReader, value_length: usize, size: usize
 fn numeric_string_tag(reader: &mut BinaryBufferReader, value_length: usize) -> TagValue {
     let value = reader.read_str(value_length);
     let vm = value.split('\\').count();
-    TagValue::Multiple(vm, String::from(value))
+    match vm {
+        1 => TagValue::String(String::from(value)),
+        n => TagValue::MultipleString(vm, String::from(value))
+    }    
 }
 
 fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag {
