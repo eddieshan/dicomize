@@ -31,20 +31,21 @@ impl TagMarker {
 }
 
 pub enum TagValue {
+    Ignored,
     String(String),
     U32(u32),
     I32(i32),
     U16(u16),
     I16(i16),
     F32(f32),
-    F64(f64)
+    F64(f64),
+    Multiple(usize, String)
 }
 
 pub struct DicomTag {
     pub id: (u16, u16),
     pub syntax: TransferSyntax,
     pub vr: VrType,
-    pub vm: Option<usize>,
     pub marker: TagMarker,
     pub value: TagValue
 }
@@ -58,13 +59,12 @@ impl DicomTag {
                 endian_encoding: EndianEncoding::LittleEndian
             },
             vr: VrType::Unknown,
-            vm: None,
             marker: TagMarker {
                 value_length: None,
                 stream_position: 0
             },
             value: TagValue::String(String::from(UNKNOWN_VALUE))
-        }        
+        }
     }
 
     pub fn simple(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, value: String) -> DicomTag {
@@ -72,7 +72,6 @@ impl DicomTag {
             id: id,
             syntax: syntax,
             vr: vr,
-            vm: None,
             marker: marker,
             value: TagValue::String(value)
         }
@@ -83,7 +82,6 @@ impl DicomTag {
             id: id,
             syntax: syntax,
             vr: vr,
-            vm: Some(vm),
             marker: marker,
             value: value
         }

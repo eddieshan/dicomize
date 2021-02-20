@@ -52,7 +52,7 @@ fn skip_reserved(reader: &mut BinaryBufferReader) {
 
 fn ignored_tag() -> TagValue {
     //println!("IGNORED TAG ({}, {})", id.0, id.1);
-    TagValue::String(String::from(""))
+    TagValue::Ignored
 }
 
 fn text_tag(reader: &mut BinaryBufferReader, marker: TagMarker) -> TagValue {
@@ -113,7 +113,7 @@ fn numeric_tag(reader: &mut BinaryBufferReader, marker: TagMarker, size: usize, 
                 1 => read_value(reader),
                 _ => {
                     reader.jump(length);
-                    TagValue::String(String::from(""))
+                    TagValue::Multiple(vm, String::from(""))
                 }
             };
 
@@ -129,7 +129,7 @@ fn numeric_string_tag(reader: &mut BinaryBufferReader, marker: TagMarker) -> Tag
         Some(length) => {
             let value = reader.read_str(length);
             let vm = value.split('\\').count();
-            TagValue::String(String::from(value))
+            TagValue::Multiple(vm, String::from(value))
         },                
         None => panic!("Tag marker has invalid value length") // TODO: marker value length should not be Option at this point.
     }
@@ -242,7 +242,6 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
         id: final_tag_id,
         syntax: next_syntax,
         vr: vr,
-        vm: None,
         marker: marker,
         value: tag_value
     }    
@@ -255,9 +254,9 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
     let vr = tag.vr;
 
     let child_syntax = match (tag_id, &tag.value) {
-        (TRANSFER_SYNTAX_UID, TagValue::String(s))  => TransferSyntax::parse(&s),
-        (TRANSFER_SYNTAX_UID, _)                    => panic!("Transfer syntax cannot be encoded in a numeric value"),
-        (_, _)                                      => syntax
+        (TRANSFER_SYNTAX_UID, TagValue::String(s)) => TransferSyntax::parse(&s), //  TODO: tags representing child syntax should have their own type.
+        (TRANSFER_SYNTAX_UID, _)                   => panic!("Transfer syntax cannot be encoded in a numeric value"),
+        (_, _)                                     => syntax
     };
 
     let child = Node { tag: tag, children: Vec::new() };
