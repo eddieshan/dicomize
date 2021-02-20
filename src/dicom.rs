@@ -111,21 +111,17 @@ fn f64_tag(reader: &mut BinaryBufferReader) -> TagValue {
 fn numeric_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, size: usize, read_value: fn(&mut BinaryBufferReader) -> TagValue) -> DicomTag {
     match marker.value_length {
         Some(length) => {
-            match i64::try_from(length/size) {
-                Ok(vm) => {
-                    let value = match vm {
-                        1 => read_value(reader),
-                        _ => {
-                            reader.jump(length);
-                            TagValue::String(String::from(""))
-                        }
-                    };
+            let vm = length/size;
+            let value = match vm {
+                1 => read_value(reader),
+                _ => {
+                    reader.jump(length);
+                    TagValue::String(String::from(""))
+                }
+            };
 
-                    println!("NUMBER TAG ({}, {}) | VM: {} | SIZE: {} | LENGTH: {}", id.0, id.1, vm, size, length);
-                    DicomTag::multiple(id, syntax, vr, vm, marker, value)        
-                },
-                Err(_) => panic!("VM has invalid value")  // TODO: propagate Error upwards instead of instant panic here.
-            }
+            println!("NUMBER TAG ({}, {}) | VM: {} | SIZE: {} | LENGTH: {}", id.0, id.1, vm, size, length);
+            DicomTag::multiple(id, syntax, vr, vm, marker, value)
         },
         None => panic!("Tag marker has invalid value length") // TODO: marker value length should not be Option at this point.
     }    
@@ -135,10 +131,8 @@ fn numeric_string_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: T
     match marker.value_length {
         Some(length) => {
             let value = reader.read_str(length);
-            match i64::try_from(value.split('\\').count()) {
-                Ok(vm) => DicomTag::multiple(id, syntax, vr, vm, marker, TagValue::String(String::from(value))),
-                Err(_) => panic!("VM has invalid value")
-            }                    
+            let vm = value.split('\\').count();
+            DicomTag::multiple(id, syntax, vr, vm, marker, TagValue::String(String::from(value)))
         },                
         None => panic!("Tag marker has invalid value length") // TODO: marker value length should not be Option at this point.
     }    

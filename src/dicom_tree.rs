@@ -44,7 +44,7 @@ pub struct DicomTag {
     pub id: (u16, u16),
     pub syntax: TransferSyntax,
     pub vr: VrType,
-    pub vm: Option<i64>,
+    pub vm: Option<usize>,
     pub marker: TagMarker,
     pub value: TagValue
 }
@@ -78,7 +78,7 @@ impl DicomTag {
         }
     }
 
-    pub fn multiple(id: (u16, u16), syntax: TransferSyntax, vr: VrType, vm: i64, marker: TagMarker, value: TagValue) -> DicomTag {
+    pub fn multiple(id: (u16, u16), syntax: TransferSyntax, vr: VrType, vm: usize, marker: TagMarker, value: TagValue) -> DicomTag {
         DicomTag {
             id: id,
             syntax: syntax,
