@@ -49,19 +49,14 @@ fn text_tag(reader: &mut BinaryBufferReader, value_length: usize) -> TagValue {
     TagValue::String(String::from(value))
 }
 
-fn attribute_tag() -> TagValue {
-    TagValue::String(String::from(""))
+fn attribute_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    let group = reader.read_u16();
+    let element = reader.read_u16();
+
+    println!("ATTRIBUTE TAG ({}, {})", group, element);
+
+    TagValue::Attribute(group, element)
 }
-
-fn attribute_id(reader: &mut BinaryBufferReader) -> (u16, u16) {
-    let next_group = reader.read_u16();
-    let next_element = reader.read_u16();
-
-    println!("ATTRIBUTE TAG ({}, {})", next_group, next_element);
-
-    (next_group, next_element)
-}
-
 
 fn u16_tag(reader: &mut BinaryBufferReader) -> TagValue {
     TagValue::U16(reader.read_u16())
@@ -143,18 +138,13 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
 
     let stream_pos = endian_reader.pos();
 
-    let tag_id = match vr {
-        VrType::Attribute => attribute_id(endian_reader),
-        _                 => (group, element)
-    };
-
     let (tag_value, value_length) = match test_length < 0 {
         true => {
             let value = match vr {
                 VrType::Delimiter | 
-                VrType::SequenceOfItems => ignored_tag(),    
-                VrType::Attribute       => attribute_tag(),
-                _                       => panic!("Tag ({}, {}) has invalid value length")
+                VrType::SequenceOfItems => ignored_tag(),
+                VrType::Attribute       => attribute_tag(endian_reader),
+                _                       => panic!("Tag ({}, {}) has invalid value length {}", group, element, test_length)
             };
             (value, None)
         },
@@ -164,7 +154,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
                 VrType::Delimiter | 
                 VrType::SequenceOfItems => ignored_tag(),
         
-                VrType::Attribute      => attribute_tag(),
+                VrType::Attribute       => attribute_tag(endian_reader),
         
                 VrType::UnsignedShort  => numeric_tag(endian_reader, length, U16_SIZE, u16_tag),
                 VrType::SignedShort    => numeric_tag(endian_reader, length, I16_SIZE, i16_tag),
@@ -199,7 +189,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     };
 
     DicomTag {
-        id: tag_id,
+        id: (group, element),
         syntax: next_syntax,
         vr: vr,
         stream_position: stream_pos,

@@ -7,6 +7,7 @@ pub const UNKNOWN_VALUE: &str = "UNKNOWN";
 
 pub enum TagValue {    
     Ignored,
+    Attribute(u16, u16),
     String(String),
     U32(u32),
     I32(i32),
