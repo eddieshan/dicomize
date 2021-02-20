@@ -41,20 +41,18 @@ fn read_vr_encoding_length(reader: &mut BinaryBufferReader, encoding: VrEncoding
     TagMarker::new(reader.pos(), length)
 }
 
-fn skip_reserved(reader: &mut BinaryBufferReader, encoding: VrEncoding) {
+fn read_marker(reader: &mut BinaryBufferReader) -> TagMarker {
+    let length = reader.read_i32();
+    let pos = reader.pos();
+    TagMarker::new(pos, length)
+}
+
+fn skip_reserved(reader: &mut BinaryBufferReader) {
     println!("RESERVED TAG");
-    match encoding {
-        VrEncoding::Explicit => reader.jump(2),
-        _                    => {}
-    }
+    reader.jump(2);
 }
 
-fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
-    let marker = read_marker(reader);
-    custom_text_tag(reader, id, syntax, vr, marker)
-}
-
-fn custom_text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
+fn text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
     match marker.value_length {
         Some(length) => {
             let value = reader.read_str(length);
@@ -65,20 +63,12 @@ fn custom_text_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: Tran
     }
 }
 
-fn read_marker(reader: &mut BinaryBufferReader) -> TagMarker {
-    let length = reader.read_i32();
-    let pos = reader.pos();
-    TagMarker::new(pos, length)
-}
-
-fn ignored_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
+fn ignored_tag(id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
     println!("IGNORED TAG ({}, {})", id.0, id.1);
-    let marker = read_marker(reader);
     DicomTag::simple(id, syntax, vr, marker, String::from(""))
 }
 
-fn attribute_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax, vr: VrType) -> DicomTag {
-    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
+fn attribute_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
     let next_group = reader.read_u16();
     let next_element = reader.read_u16();
 
@@ -118,9 +108,7 @@ fn f64_tag(reader: &mut BinaryBufferReader) -> TagValue {
     TagValue::F64(reader.read_f64())
 }
 
-fn numeric_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, size: usize, read_value: fn(&mut BinaryBufferReader) -> TagValue) -> DicomTag {
-    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
-
+fn numeric_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker, size: usize, read_value: fn(&mut BinaryBufferReader) -> TagValue) -> DicomTag {
     match marker.value_length {
         Some(length) => {
             match i64::try_from(length/size) {
@@ -143,9 +131,7 @@ fn numeric_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: Transfer
     }    
 }
 
-fn numeric_string_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType) -> DicomTag {
-    let marker = read_vr_encoding_length(reader, syntax.vr_encoding);
-
+fn numeric_string_tag(reader: &mut BinaryBufferReader, id: (u16, u16), syntax: TransferSyntax, vr: VrType, marker: TagMarker) -> DicomTag {
     match marker.value_length {
         Some(length) => {
             let value = reader.read_str(length);
@@ -180,30 +166,84 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
 
     let vr = parse_vr_type(endian_reader, group, element, syntax.vr_encoding);
 
+    match syntax.vr_encoding {
+        VrEncoding::Explicit => match vr {
+            VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::UnlimitedText | VrType::Unknown | VrType::SequenceOfItems =>
+                skip_reserved(endian_reader),
+            _ => {}
+        },
+        _ => {}
+    };
+
+    let marker = match vr {
+        VrType::Delimiter | 
+        VrType::SequenceOfItems => read_marker(endian_reader),
+
+        VrType::Attribute       => read_vr_encoding_length(endian_reader, syntax.vr_encoding),
+
+        VrType::UnsignedShort | 
+        VrType::SignedShort   | 
+        VrType::UnsignedLong  | 
+        VrType::SignedLong    | 
+        VrType::Float         | 
+        VrType::Double          => read_vr_encoding_length(endian_reader, syntax.vr_encoding),
+
+        VrType::OtherByte | 
+        VrType::OtherFloat | 
+        VrType::OtherWord | 
+        VrType::UnlimitedText | 
+        VrType::Unknown         =>  read_marker(endian_reader),
+
+        VrType::ApplicationEntity | 
+        VrType::AgeString | 
+        VrType::CodeString | 
+        VrType::Date | 
+        VrType::DateTime | 
+        VrType::LongText | 
+        VrType::PersonName | 
+        VrType::ShortString | 
+        VrType::ShortText | 
+        VrType::Time | 
+        VrType::Uid             => read_vr_encoding_length(endian_reader, next_syntax.vr_encoding),
+
+        VrType::DecimalString | 
+        VrType::IntegerString | 
+        VrType::LongString      => read_vr_encoding_length(endian_reader, next_syntax.vr_encoding)
+    };
+
     match vr {
-        VrType::Delimiter      => ignored_tag(endian_reader, tag_id, syntax, vr),
-        VrType::Attribute      => attribute_tag(endian_reader, next_syntax, vr),
-        VrType::UnsignedShort  => numeric_tag(endian_reader, tag_id, next_syntax, vr, U16_SIZE, u16_tag),
-        VrType::SignedShort    => numeric_tag(endian_reader, tag_id, next_syntax, vr, I16_SIZE, i16_tag),
-        VrType::UnsignedLong   => numeric_tag(endian_reader, tag_id, next_syntax, vr, U32_SIZE, u32_tag),
-        VrType::SignedLong     => numeric_tag(endian_reader, tag_id, next_syntax, vr, I32_SIZE, i32_tag),
-        VrType::Float          => numeric_tag(endian_reader, tag_id, next_syntax, vr, F32_SIZE, f32_tag),
-        VrType::Double         => numeric_tag(endian_reader, tag_id, next_syntax, vr, F64_SIZE, f64_tag),
-        VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::UnlimitedText | VrType::Unknown => {
-            skip_reserved(endian_reader, next_syntax.vr_encoding);
-            text_tag(endian_reader, tag_id, next_syntax, vr)
-        },
-        VrType::SequenceOfItems => {
-            skip_reserved(endian_reader, next_syntax.vr_encoding);
-            ignored_tag(endian_reader, tag_id, syntax, vr)
-        },
-        VrType::ApplicationEntity | VrType::AgeString | VrType::CodeString | VrType::Date | 
-        VrType::DateTime | VrType::LongText | VrType::PersonName | VrType::ShortString | 
-        VrType::ShortText | VrType::Time | VrType::Uid => {
-            let marker = read_vr_encoding_length(endian_reader, next_syntax.vr_encoding);
-            custom_text_tag(endian_reader, tag_id, next_syntax, vr, marker)
-        },
-        VrType::DecimalString | VrType::IntegerString | VrType::LongString => numeric_string_tag(endian_reader, tag_id, next_syntax, vr)
+        VrType::Delimiter | 
+        VrType::SequenceOfItems => ignored_tag(tag_id, syntax, vr, marker),
+
+        VrType::Attribute      => attribute_tag(endian_reader, next_syntax, vr, marker),
+
+        VrType::UnsignedShort  => numeric_tag(endian_reader, tag_id, next_syntax, vr, marker, U16_SIZE, u16_tag),
+        VrType::SignedShort    => numeric_tag(endian_reader, tag_id, next_syntax, vr, marker, I16_SIZE, i16_tag),
+        VrType::UnsignedLong   => numeric_tag(endian_reader, tag_id, next_syntax, vr, marker, U32_SIZE, u32_tag),
+        VrType::SignedLong     => numeric_tag(endian_reader, tag_id, next_syntax, vr, marker, I32_SIZE, i32_tag),
+        VrType::Float          => numeric_tag(endian_reader, tag_id, next_syntax, vr, marker, F32_SIZE, f32_tag),
+        VrType::Double         => numeric_tag(endian_reader, tag_id, next_syntax, vr, marker, F64_SIZE, f64_tag),
+
+        VrType::OtherByte | 
+        VrType::OtherFloat | 
+        VrType::OtherWord | 
+        VrType::UnlimitedText | 
+        VrType::Unknown | 
+        VrType::ApplicationEntity | 
+        VrType::AgeString | 
+        VrType::CodeString | 
+        VrType::Date | 
+        VrType::DateTime | 
+        VrType::LongText | 
+        VrType::PersonName | 
+        VrType::ShortString | 
+        VrType::ShortText | 
+        VrType::Time | 
+        VrType::Uid            => text_tag(endian_reader, tag_id, next_syntax, vr, marker),
+
+        VrType::DecimalString | 
+        VrType::IntegerString | 
+        VrType::LongString     => numeric_string_tag(endian_reader, tag_id, next_syntax, vr, marker)
     }
 }
 
