@@ -9,54 +9,14 @@ use crate::readers::BinaryBufferReader;
 
 const STANDARD_PREAMBLE: &str = "DICM";
 
+type NumericRead = (usize, Numeric, fn(&mut BinaryBufferReader) -> TagValue);
+
 const U16_SIZE: usize = 2;
 const I16_SIZE: usize = 2;
 const U32_SIZE: usize = 4;
 const I32_SIZE: usize = 4;
 const F32_SIZE: usize = 4;
 const F64_SIZE: usize = 8;
-
-fn parse_vr_type (reader: &mut BinaryBufferReader, group: u16, element: u16, vr_encoding: VrEncoding) -> VrType {
-    let vr_type = tag_vr_type(group, element);
-    let is_even_group = utils::even(group);
-    let is_private_code = element <= 0xFFu16;
-
-    match (vr_type, vr_encoding, is_even_group, is_private_code) {
-        (VrType::Delimiter, _, _, _)    => vr_type,
-        (_, VrEncoding::Explicit, _, _) => {
-            let code = reader.read_2();
-            get_vr_type(&code)
-        },
-        (_, _, true, _)                 => vr_type,
-        (_, _, false, true)             => VrType::LongString,
-        (_, _, false, false)            => VrType::Unknown
-    }
-}
-
-fn skip_reserved(reader: &mut BinaryBufferReader) {
-    println!("RESERVED TAG");
-    reader.jump(2);
-}
-
-fn ignored_tag() -> TagValue {
-    //println!("IGNORED TAG ({}, {})", id.0, id.1);
-    TagValue::Ignored
-}
-
-fn text_tag(reader: &mut BinaryBufferReader, value_length: usize) -> TagValue {
-    let value = reader.read_str(value_length);
-    println!("TEXT TAG | LENGTH: {} | VALUE: {}", value_length, value);
-    TagValue::String(String::from(value))
-}
-
-fn attribute_tag(reader: &mut BinaryBufferReader) -> TagValue {
-    let group = reader.read_u16();
-    let element = reader.read_u16();
-
-    println!("ATTRIBUTE TAG ({}, {})", group, element);
-
-    TagValue::Attribute(group, element)
-}
 
 fn u16_tag(reader: &mut BinaryBufferReader) -> TagValue {
     TagValue::U16(reader.read_u16())
@@ -82,14 +42,66 @@ fn f64_tag(reader: &mut BinaryBufferReader) -> TagValue {
     TagValue::F64(reader.read_f64())
 }
 
-fn numeric_tag(reader: &mut BinaryBufferReader, value_length: usize, size: usize, read_value: fn(&mut BinaryBufferReader) -> TagValue) -> TagValue {
+// Numeric parsing requieres a trio of params per type: numeric type, type size and parsing function.
+// Bundling them in const tuples helps keep them consistent and avoid errors caused by mixing them up.
+// Triplet type is aliased as NumericRead for convenience.
+const READ_U16: NumericRead = (U16_SIZE, Numeric::U16, u16_tag);
+const READ_I16: NumericRead = (I16_SIZE, Numeric::I16, i16_tag);
+const READ_U32: NumericRead = (U32_SIZE, Numeric::U32, u32_tag);
+const READ_I32: NumericRead = (I32_SIZE, Numeric::I32, i32_tag);
+const READ_F32: NumericRead = (F32_SIZE, Numeric::F32, f32_tag);
+const READ_F64: NumericRead = (F64_SIZE, Numeric::F64, f64_tag);
+
+fn parse_vr_type (reader: &mut BinaryBufferReader, group: u16, element: u16, vr_encoding: VrEncoding) -> VrType {
+    let vr_type = tag_vr_type(group, element);
+    let is_even_group = utils::even(group);
+    let is_private_code = element <= 0xFFu16;
+
+    match (vr_type, vr_encoding, is_even_group, is_private_code) {
+        (VrType::Delimiter, _, _, _)    => vr_type,
+        (_, VrEncoding::Explicit, _, _) => {
+            let code = reader.read_2();
+            get_vr_type(&code)
+        },
+        (_, _, true, _)                 => vr_type,
+        (_, _, false, true)             => VrType::LongString,
+        (_, _, false, false)            => VrType::Unknown
+    }
+}
+
+fn skip_reserved(reader: &mut BinaryBufferReader) {
+    println!("RESERVED TAG");
+    reader.jump(2);
+}
+
+fn ignored_tag() -> TagValue {
+    TagValue::Ignored
+}
+
+fn text_tag(reader: &mut BinaryBufferReader, value_length: usize) -> TagValue {
+    let value = reader.read_str(value_length);
+    println!("TEXT TAG | LENGTH: {} | VALUE: {}", value_length, value);
+    TagValue::String(String::from(value))
+}
+
+fn attribute_tag(reader: &mut BinaryBufferReader) -> TagValue {
+    let group = reader.read_u16();
+    let element = reader.read_u16();
+
+    println!("ATTRIBUTE TAG ({}, {})", group, element);
+
+    TagValue::Attribute(group, element)
+}
+
+fn numeric_tag(reader: &mut BinaryBufferReader, value_length: usize, numeric_read: NumericRead) -> TagValue {
+    let (size, number_type, read_value) = numeric_read;
     let vm = value_length/size;
 
     let value = match vm {
         1 => read_value(reader),
         _ => {
-            reader.jump(value_length);
-            TagValue::Multiple(vm, String::from(""))
+            let buf = reader.read_bytes(value_length);
+            TagValue::MultiNumeric(number_type, buf)
         }
     };
 
@@ -102,7 +114,7 @@ fn numeric_string_tag(reader: &mut BinaryBufferReader, value_length: usize) -> T
     let vm = value.split('\\').count();
     match vm {
         1 => TagValue::String(String::from(value)),
-        n => TagValue::MultipleString(vm, String::from(value))
+        _ => TagValue::MultiString(String::from(value))
     }    
 }
 
@@ -159,12 +171,12 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
         
                 VrType::Attribute       => attribute_tag(endian_reader),
         
-                VrType::UnsignedShort  => numeric_tag(endian_reader, length, U16_SIZE, u16_tag),
-                VrType::SignedShort    => numeric_tag(endian_reader, length, I16_SIZE, i16_tag),
-                VrType::UnsignedLong   => numeric_tag(endian_reader, length, U32_SIZE, u32_tag),
-                VrType::SignedLong     => numeric_tag(endian_reader, length, I32_SIZE, i32_tag),
-                VrType::Float          => numeric_tag(endian_reader, length, F32_SIZE, f32_tag),
-                VrType::Double         => numeric_tag(endian_reader, length, F64_SIZE, f64_tag),
+                VrType::UnsignedShort  => numeric_tag(endian_reader, length, READ_U16),
+                VrType::SignedShort    => numeric_tag(endian_reader, length, READ_I16),
+                VrType::UnsignedLong   => numeric_tag(endian_reader, length, READ_U32),
+                VrType::SignedLong     => numeric_tag(endian_reader, length, READ_I32),
+                VrType::Float          => numeric_tag(endian_reader, length, READ_F32),
+                VrType::Double         => numeric_tag(endian_reader, length, READ_F64),
         
                 VrType::OtherByte | 
                 VrType::OtherFloat | 

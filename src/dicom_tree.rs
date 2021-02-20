@@ -1,9 +1,16 @@
-use std::convert::TryFrom;
-
 use crate::vr_type::VrType;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 
 pub const UNKNOWN_VALUE: &str = "UNKNOWN";
+
+pub enum Numeric {
+    U32,
+    I32,
+    U16,
+    I16,
+    F32,
+    F64
+}
 
 pub enum TagValue {    
     Ignored,
@@ -15,8 +22,8 @@ pub enum TagValue {
     I16(i16),
     F32(f32),
     F64(f64),
-    Multiple(usize, String),
-    MultipleString(usize, String)
+    MultiNumeric(Numeric, Vec<u8>), // TODO: pending revision of non-typed buffer implementation.
+    MultiString(String)
 }
 
 pub struct DicomTag {
