@@ -83,6 +83,14 @@ impl BinaryBufferReader {
         }
     }
 
+    pub fn read_bytes(&mut self, length: usize) -> Vec<u8> {
+        let end = self.pos + length;
+        let value = &self.buffer[ self.pos .. end ];
+        self.pos = end;
+
+        Vec::from(value)
+    }    
+
     pub fn read_i32(&mut self) -> i32 {
         self.read_32(i32::from_ne_bytes)
     }
