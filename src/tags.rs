@@ -3035,6 +3035,14 @@ pub fn tag_vr_type (group: u16, element: u16) -> VrType {
             return item.1.1;
         }
     }
-
     VrType::Unknown
+}
+
+pub fn try_tag_name (group: u16, element: u16) -> Option<&'static str> {
+    for item in TAGS.iter() {
+        if item.0 == (group, element) {
+            return Some(item.1.0);
+        }
+    }
+    None
 }

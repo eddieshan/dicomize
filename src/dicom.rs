@@ -70,7 +70,6 @@ fn read_vr(reader: &mut BinaryBufferReader, group: u16, element: u16, vr_encodin
 }
 
 fn skip_reserved(reader: &mut BinaryBufferReader) {
-    println!("RESERVED TAG");
     reader.jump(2);
 }
 
@@ -80,16 +79,12 @@ fn ignored_tag() -> TagValue {
 
 fn text_tag(reader: &mut BinaryBufferReader, value_length: usize) -> TagValue {
     let value = reader.read_str(value_length);
-    println!("TEXT TAG | LENGTH: {} | VALUE: {}", value_length, value);
     TagValue::String(String::from(value))
 }
 
 fn attribute_tag(reader: &mut BinaryBufferReader) -> TagValue {
     let group = reader.read_u16();
     let element = reader.read_u16();
-
-    println!("ATTRIBUTE TAG ({}, {})", group, element);
-
     TagValue::Attribute(group, element)
 }
 
@@ -105,7 +100,6 @@ fn numeric_tag(reader: &mut BinaryBufferReader, value_length: usize, numeric_rea
         }
     };
 
-    println!("NUMBER TAG | VM: {} | SIZE: {} | LENGTH: {}", vm, size, value_length);
     value
 }
 
@@ -216,7 +210,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     }    
 }
 
-fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, parent_index: usize, syntax: TransferSyntax, limit_pos: usize) {
+fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, parent_index: usize, syntax: TransferSyntax, limit_pos: usize, handle_tag:fn(&DicomTag)) {
 
     let tag_syntax = peek_syntax(reader, syntax);
 
@@ -230,6 +224,8 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
         (TRANSFER_SYNTAX_UID, _)                   => panic!("Transfer syntax cannot be encoded in a numeric value"),
         (_, _)                                     => syntax
     };
+
+    handle_tag(&tag);
 
     let child = Node { tag: tag, children: Vec::new() };
     nodes.push(child);
@@ -245,14 +241,14 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
         };
 
         if let Some(l) = next_limit {            
-            parse_tags(reader, nodes, child_index, child_syntax, l);
+            parse_tags(reader, nodes, child_index, child_syntax, l, handle_tag);
         };
 
-        parse_tags(reader, nodes, parent_index, child_syntax, limit_pos);        
+        parse_tags(reader, nodes, parent_index, child_syntax, limit_pos, handle_tag);
     }
 }
 
-pub fn parse(buffer: Vec<u8>) -> Vec<Node> {
+pub fn parse(buffer: Vec<u8>, handle_tag:fn(&DicomTag)) -> Vec<Node> {
     // Dicom file header,
     // - Fixed preamble not to be used: 128 bytes.
     // - DICOM Prefix "DICM": 4 bytes.
@@ -270,7 +266,7 @@ pub fn parse(buffer: Vec<u8>) -> Vec<Node> {
 
     let root = Node { tag: DicomTag::empty(), children: Vec::new() };
     let mut nodes = vec![root];
-    parse_tags(reader, &mut nodes, 0, TransferSyntax::default(), reader.len());
+    parse_tags(reader, &mut nodes, 0, TransferSyntax::default(), reader.len(), handle_tag);
     
     nodes
 }
