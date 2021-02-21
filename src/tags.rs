@@ -1,11 +1,5 @@
 use crate::vr_type::VrType;
 
-const VR_FIELD_SIZE: i32 = 2;
-
-const PRIVATE_CREATOR_TAG: &str = "Private Creator";
-
-const UNKNOWN_TAG: &str = "Unknown tag";
-
 const POSITION: (u16, u16) = (0x0020u16, 0x0032u16);
 const LOCATION: (u16, u16) = (0x0020u16, 0x1041u16);
 const SOP_CLASS_UID: (u16, u16) = (0x0008u16, 0x0016u16);
