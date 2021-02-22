@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::vr_type::VrType;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 
@@ -24,6 +26,24 @@ pub enum TagValue {
     F64(f64),
     MultiNumeric(Numeric, Vec<u8>), // TODO: pending revision of non-typed buffer implementation.
     MultiString(String)
+}
+
+impl fmt::Display for TagValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TagValue::Ignored                => write!(f, "IGNORED"),
+            TagValue::Attribute(group, name) => write!(f, "ATTRIBUTE ({}, {})", group, name),
+            TagValue::String(s)              => write!(f, "STRING {}", s),
+            TagValue::U32(v)                 => write!(f, "U32 {}", v),
+            TagValue::I32(v)                 => write!(f, "I32 {}", v),
+            TagValue::U16(v)                 => write!(f, "U16 {}", v),
+            TagValue::I16(v)                 => write!(f, "I16 {}", v),
+            TagValue::F32(v)                 => write!(f, "F32 {}", v),
+            TagValue::F64(v)                 => write!(f, "F64 {}", v),
+            TagValue::MultiNumeric(_, buf)   => write!(f, "MULTIPLE NUMERIC {}", buf.len()),
+            TagValue::MultiString(s)         => write!(f, "MULTIPLE STRING {}", s),  
+        }
+    }
 }
 
 pub struct DicomTag {
