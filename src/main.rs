@@ -6,35 +6,34 @@ mod vr_type;
 mod sop_class;
 mod transfer_syntax;
 mod tags;
-mod dicom_tree;
+mod dicom_tag;
+mod dicom_container;
 mod dicom;
+mod abstractions;
 
 use std::env;
 use std::fs;
 use std::time::Instant;
 
-const MIN_ARGUMENTS: usize = 2;
+use crate::dicom_tag::*;
+use crate::dicom_container::*;
 
-fn handle_tag(tag: &dicom_tree::DicomTag) {
-    let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
-        Some(name) => name, 
-        None       => "UNKNOWN"
-    };
-    println!("TAG | {} | ({}, {}) | {} | {}", tag.vr, tag.id.0, tag.id.1, tag_name, tag.value);
-}
+const MIN_ARGUMENTS: usize = 2;
 
 fn process_dcim(dcim_file_path: &str) {
 
     println!("PROCESSING {} ...", dcim_file_path);
 
+    let root = Node { tag: DicomTag::empty(), children: Vec::new() };
+
+    let mut container = DicomContainer { nodes: vec![root] };
+
     match fs::read(dcim_file_path) {
-        Ok(buffer) => {
-
-
-            let _ = dicom::parse(buffer, handle_tag);
-        },
-        Err(err) => println!("ERROR: COULD NOT LOAD {}. {}", dcim_file_path, err)
+        Ok(buffer) => dicom::parse(buffer, &mut container),
+        Err(err)   => println!("ERROR: COULD NOT LOAD {}. {}", dcim_file_path, err)
     };
+
+    println!("Found {} dicom nodes", container.nodes.len());
 }
 
 fn main() {

@@ -70,8 +70,3 @@ impl DicomTag {
         }
     }    
 }
-
-pub struct Node {
-    pub tag: DicomTag,
-    pub children: Vec<usize>
-}

@@ -1,7 +1,8 @@
 use std::convert::TryFrom;
 
 use crate::utils;
-use crate::dicom_tree::*;
+use crate::abstractions::*;
+use crate::dicom_tag::*;
 use crate::vr_type::*;
 use crate::tags::*;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
@@ -210,7 +211,7 @@ fn next_tag(reader: &mut BinaryBufferReader, syntax: TransferSyntax) -> DicomTag
     }    
 }
 
-fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, parent_index: usize, syntax: TransferSyntax, limit_pos: usize, handle_tag:fn(&DicomTag)) {
+fn parse_tags<'a> (reader: &mut BinaryBufferReader, parent_index: usize, syntax: TransferSyntax, limit_pos: usize, dicom_handler: &mut impl DicomHandler) {
 
     let tag_syntax = peek_syntax(reader, syntax);
 
@@ -225,13 +226,7 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
         (_, _)                                     => syntax
     };
 
-    handle_tag(&tag);
-
-    let child = Node { tag: tag, children: Vec::new() };
-    nodes.push(child);
-
-    let child_index = nodes.len() - 1;
-    nodes[parent_index].children.push(child_index);     
+    let child_index = dicom_handler.handle_tag(parent_index, tag);
 
     if reader.pos() < limit_pos && tag_id != SEQUENCE_DELIMITER {
         let next_limit = match (vr, value_length) {
@@ -241,14 +236,14 @@ fn parse_tags<'a> (reader: &mut BinaryBufferReader, nodes: &mut Vec<Node>, paren
         };
 
         if let Some(l) = next_limit {            
-            parse_tags(reader, nodes, child_index, child_syntax, l, handle_tag);
+            parse_tags(reader, child_index, child_syntax, l, dicom_handler);
         };
 
-        parse_tags(reader, nodes, parent_index, child_syntax, limit_pos, handle_tag);
+        parse_tags(reader, parent_index, child_syntax, limit_pos, dicom_handler);
     }
 }
 
-pub fn parse(buffer: Vec<u8>, handle_tag:fn(&DicomTag)) -> Vec<Node> {
+pub fn parse(buffer: Vec<u8>, dicom_handler: &mut impl DicomHandler) {
     // Dicom file header,
     // - Fixed preamble not to be used: 128 bytes.
     // - DICOM Prefix "DICM": 4 bytes.
@@ -264,9 +259,5 @@ pub fn parse(buffer: Vec<u8>, handle_tag:fn(&DicomTag)) -> Vec<Node> {
         reader.seek(0);
     }
 
-    let root = Node { tag: DicomTag::empty(), children: Vec::new() };
-    let mut nodes = vec![root];
-    parse_tags(reader, &mut nodes, 0, TransferSyntax::default(), reader.len(), handle_tag);
-    
-    nodes
+    parse_tags(reader, 0, TransferSyntax::default(), reader.len(), dicom_handler);
 }
