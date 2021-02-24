@@ -12,8 +12,8 @@ mod dicom;
 mod abstractions;
 
 use std::env;
-use std::fs;
 use std::time::Instant;
+use std::fs::File;
 
 use crate::dicom_tag::*;
 use crate::dicom_container::*;
@@ -28,10 +28,10 @@ fn process_dcim(dcim_file_path: &str) {
 
     let mut container = DicomContainer { nodes: vec![root] };
 
-    match fs::read(dcim_file_path) {
-        Ok(buffer) => dicom::parse(buffer, &mut container),
+    match File::open(dcim_file_path) {
+        Ok(mut reader) => dicom::parse(&mut reader, &mut container),
         Err(err)   => println!("ERROR: COULD NOT LOAD {}. {}", dcim_file_path, err)
-    };
+    }
 
     println!("Found {} dicom nodes", container.nodes.len());
 }
