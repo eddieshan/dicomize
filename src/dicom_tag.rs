@@ -18,7 +18,7 @@ pub enum TagValue {
     Ignored,
     Attribute(u16, u16),
     String(String),
-    MultiNumeric(Numeric, Vec<u8>), // TODO: pending revision of non-typed buffer implementation.
+    Numeric(Numeric, Vec<u8>), // TODO: pending revision of non-typed buffer implementation.
     MultiString(String)
 }
 
@@ -28,7 +28,7 @@ impl fmt::Display for TagValue {
             TagValue::Ignored                => write!(f, "IGNORED"),
             TagValue::Attribute(group, name) => write!(f, "ATTRIBUTE ({}, {})", group, name),
             TagValue::String(s)              => write!(f, "STRING {}", s),
-            TagValue::MultiNumeric(_, buf)   => write!(f, "MULTIPLE NUMERIC {}", buf.len()),
+            TagValue::Numeric(_, buf)        => write!(f, "MULTIPLE NUMERIC {}", buf.len()),
             TagValue::MultiString(s)         => write!(f, "MULTIPLE STRING {}", s),  
         }
     }

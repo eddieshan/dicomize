@@ -49,7 +49,7 @@ fn attribute_tag(reader: &mut impl Read) -> TagValue {
 
 fn numeric_tag(reader: &mut impl Read, value_length: usize, number_type: Numeric) -> TagValue {
     let buf = readers::read_bytes(reader, value_length);
-    TagValue::MultiNumeric(number_type, buf)
+    TagValue::Numeric(number_type, buf)
 }
 
 fn numeric_string_tag(reader: &mut impl Read, value_length: usize) -> TagValue {
