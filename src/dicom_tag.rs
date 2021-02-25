@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::vr_type::VrType;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 
@@ -16,21 +18,27 @@ pub enum TagValue {
     Ignored,
     Attribute(u16, u16),
     String(String),
-    U32(u32),
-    I32(i32),
-    U16(u16),
-    I16(i16),
-    F32(f32),
-    F64(f64),
-    MultiNumeric(Numeric, Vec<u8>), // TODO: pending revision of non-typed buffer implementation.
+    Numeric(Numeric, Vec<u8>), // TODO: pending revision of non-typed buffer implementation.
     MultiString(String)
+}
+
+impl fmt::Display for TagValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TagValue::Ignored                => write!(f, "IGNORED"),
+            TagValue::Attribute(group, name) => write!(f, "ATTRIBUTE ({}, {})", group, name),
+            TagValue::String(s)              => write!(f, "STRING {}", s),
+            TagValue::Numeric(_, buf)        => write!(f, "MULTIPLE NUMERIC {}", buf.len()),
+            TagValue::MultiString(s)         => write!(f, "MULTIPLE STRING {}", s),  
+        }
+    }
 }
 
 pub struct DicomTag {
     pub id: (u16, u16),
     pub syntax: TransferSyntax,
     pub vr: VrType,
-    pub stream_position: usize,
+    pub stream_position: u64,
     pub value_length: Option<usize>,
     pub value: TagValue
 }
@@ -48,10 +56,5 @@ impl DicomTag {
             value_length: None,
             value: TagValue::String(String::from(UNKNOWN_VALUE))
         }
-    }    
-}
-
-pub struct Node {
-    pub tag: DicomTag,
-    pub children: Vec<usize>
+    }
 }
