@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::io::{Read, Seek, SeekFrom};
 
 use crate::utils;
-use crate::readers;
+use crate::readers::*;
 use crate::abstractions::*;
 use crate::dicom_tag::*;
 use crate::vr_type::*;
@@ -19,7 +19,7 @@ fn read_vr(reader: &mut impl Read, group: u16, element: u16, vr_encoding: VrEnco
     match (vr_type, vr_encoding, is_even_group, is_private_code) {
         (VrType::Delimiter, _, _, _)    => vr_type,
         (_, VrEncoding::Explicit, _, _) => {
-            let code = readers::read_2(reader);
+            let code = reader.read_2();
             get_vr_type(&code)
         },
         (_, _, true, _)                 => vr_type,
@@ -37,23 +37,23 @@ fn ignored_tag() -> TagValue {
 }
 
 fn text_tag(reader: &mut impl Read, value_length: usize) -> TagValue {
-    let value = readers::read_str(reader, value_length);
+    let value = reader.read_str(value_length);
     TagValue::String(value)
 }
 
 fn attribute_tag(reader: &mut impl Read) -> TagValue {
-    let group = readers::read_u16(reader);
-    let element = readers::read_u16(reader);
+    let group = reader.read_u16();
+    let element = reader.read_u16();
     TagValue::Attribute(group, element)
 }
 
 fn numeric_tag(reader: &mut impl Read, value_length: usize, number_type: Numeric) -> TagValue {
-    let buf = readers::read_bytes(reader, value_length);
+    let buf = reader.read_bytes(value_length);
     TagValue::Numeric(number_type, buf)
 }
 
 fn numeric_string_tag(reader: &mut impl Read, value_length: usize) -> TagValue {
-    let value = readers::read_str(reader, value_length);
+    let value = reader.read_str(value_length);
     let vm = value.split('\\').count();
     match vm {
         1 => TagValue::String(value),
@@ -64,7 +64,7 @@ fn numeric_string_tag(reader: &mut impl Read, value_length: usize) -> TagValue {
 fn peek_syntax(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> TransferSyntax {
     // First pass to get get transfer syntax based on lookup of group number.
     // Then rewind and start reading this time using the specified encoding.
-    let group_peek = readers::read_rewind_u16(reader);
+    let group_peek = reader.read_rewind_u16();
 
     match group_peek {
         0x0002_u16 => TransferSyntax::default(),
@@ -79,24 +79,24 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         EndianEncoding::BigEndian    => reader
     };
 
-    let group = readers::read_u16(endian_reader);
-    let element = readers::read_u16(endian_reader);
+    let group = endian_reader.read_u16();
+    let element = endian_reader.read_u16();
 
     let vr = read_vr(endian_reader, group, element, syntax.vr_encoding);
 
     let test_length = match syntax.vr_encoding {
-        VrEncoding::Implicit => readers::read_i32(endian_reader),
+        VrEncoding::Implicit => endian_reader.read_i32(),
         VrEncoding::Explicit => match vr {
             VrType::SequenceOfItems | VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::UnlimitedText | VrType::Unknown => {
                 skip_reserved(endian_reader);
-                readers::read_i32(endian_reader)
+                endian_reader.read_i32()
             },
-            VrType::Delimiter => readers::read_i32(endian_reader),
-            _                 => i32::from(readers::read_i16(endian_reader))
+            VrType::Delimiter => endian_reader.read_i32(),
+            _                 => i32::from(endian_reader.read_i16())
         }
     };
 
-    let stream_pos = readers::stream_pos(endian_reader);
+    let stream_pos = endian_reader.pos();
 
     let (tag_value, value_length) = match test_length < 0 {
         true => {
@@ -174,11 +174,11 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     };
 
     let child_index = dicom_handler.handle_tag(parent_index, tag);
-    let stream_pos = readers::stream_pos(reader);
+    let stream_pos = reader.pos();
 
     if stream_pos < limit_pos && tag_id != SEQUENCE_DELIMITER {
         let next_limit = match (vr, value_length) {
-            (VrType::SequenceOfItems, None)    => Some(readers::stream_len(reader)),
+            (VrType::SequenceOfItems, None)    => Some(reader.len()),
             (VrType::SequenceOfItems, Some(l)) => Some(stream_pos + u64::try_from(l).unwrap()),
             (_, _)                             => None
         };
@@ -200,13 +200,13 @@ pub fn parse(reader: &mut (impl Read + Seek), dicom_handler: &mut impl DicomHand
     let (preamble_length, dicm_mark_length) = (128, 4);
     let _ = reader.seek(SeekFrom::Start(preamble_length)).unwrap();
 
-    let dicm_mark = readers::read_str(reader, dicm_mark_length);
+    let dicm_mark = reader.read_str(dicm_mark_length);
 
     if dicm_mark != STANDARD_PREAMBLE {
         let _ = reader.seek(SeekFrom::Start(0)).unwrap();
     }
 
-    let limit_pos = readers::stream_len(reader);
+    let limit_pos = reader.len();
 
     parse_tags(reader, 0, TransferSyntax::default(), limit_pos, dicom_handler);
 }
