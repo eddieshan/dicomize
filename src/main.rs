@@ -1,6 +1,7 @@
 mod utils;
 mod errors;
 mod readers;
+mod dicom_reader;
 
 mod vr_type;
 mod sop_class;

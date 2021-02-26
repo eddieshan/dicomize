@@ -1,7 +1,4 @@
-use std::str;
 use std::io::{Read, Seek, SeekFrom};
-
-use crate::errors;
 
 pub trait RewindExtensions {
 
