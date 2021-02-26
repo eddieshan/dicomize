@@ -1,6 +1,6 @@
 mod utils;
 mod errors;
-mod readers;
+mod binary_reader;
 mod dicom_reader;
 
 mod vr_type;

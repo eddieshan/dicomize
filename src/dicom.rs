@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::io::{Read, Seek, SeekFrom};
 
-use crate::readers::*;
+use crate::binary_reader::*;
 use crate::dicom_reader::DicomReader;
 use crate::dicom_handlers::*;
 use crate::dicom_tag::*;

@@ -5,7 +5,6 @@ pub trait RewindExtensions {
     fn read_rewind_16<T>(&mut self, convert: fn([u8; 2]) -> T) -> T;
     
     fn read_rewind_u16(&mut self) -> u16;
-
 }
 
 pub trait SeekExtensions {
@@ -13,7 +12,6 @@ pub trait SeekExtensions {
     fn len(&mut self) -> u64;
 
     fn pos(&mut self) -> u64;
-
 }
 
 pub trait BinaryReader {
@@ -40,11 +38,11 @@ pub trait BinaryReader {
     
     fn read_f32(&mut self) -> f32;
     
-    fn read_f64(&mut self) -> f64;    
-
+    fn read_f64(&mut self) -> f64;
 }
 
 impl <T: Seek> SeekExtensions for T {
+
     fn len(&mut self) -> u64 {
         let current = self.pos();
         // Safe to unwrap, guaranteed by the stream impl.
@@ -71,8 +69,7 @@ impl <T: Read+Seek> RewindExtensions for T {
     
     fn read_rewind_u16(&mut self) -> u16 {
         self.read_rewind_16(u16::from_ne_bytes)
-    }    
-
+    }
 }
 
 impl <T: Read> BinaryReader for T {
