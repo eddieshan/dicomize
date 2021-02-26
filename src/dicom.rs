@@ -11,12 +11,17 @@ use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 
 const STANDARD_PREAMBLE: &str = "DICM";
 
-fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag {
-
-    let endian_reader = match syntax.endian_encoding {
+fn endian_reader<T: Read+Seek>(reader: &mut T, syntax: TransferSyntax) -> &mut T {
+    // TODO: handle big endian reading, for now assuming little endian by default.
+    match syntax.endian_encoding {
         EndianEncoding::LittleEndian => reader,
         EndianEncoding::BigEndian    => reader
-    };
+    }
+}
+
+fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag {
+
+    let endian_reader = endian_reader(reader, syntax);
 
     let group = endian_reader.read_u16();
     let element = endian_reader.read_u16();
@@ -146,6 +151,7 @@ pub fn parse(reader: &mut (impl Read + Seek), dicom_handler: &mut impl DicomHand
     }
 
     let limit_pos = reader.len();
-
-    parse_tags(reader, 0, TransferSyntax::default(), limit_pos, dicom_handler);
+    let initial_syntax = TransferSyntax::default();
+ 
+    parse_tags(reader, 0, initial_syntax, limit_pos, dicom_handler);
 }
