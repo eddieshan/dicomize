@@ -1,6 +1,9 @@
-use crate::abstractions;
 use crate::tags;
 use crate::dicom_tag::DicomTag;
+
+pub trait DicomHandler {
+    fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize;
+}
 
 pub struct Node {
     pub tag: DicomTag,
@@ -11,7 +14,7 @@ pub struct DicomContainer {
     pub nodes: Vec<Node>
 }
 
-impl abstractions::DicomHandler for DicomContainer {
+impl DicomHandler for DicomContainer {
     fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize {
         let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
             Some(name) => name, 
@@ -47,7 +50,7 @@ impl DicomDumper {
 }
 
 
-impl abstractions::DicomHandler for DicomDumper {
+impl DicomHandler for DicomDumper {
     fn handle_tag(&mut self, _: usize, tag: DicomTag) -> usize {
         let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
             Some(name) => name, 

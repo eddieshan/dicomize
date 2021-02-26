@@ -9,7 +9,6 @@ mod tags;
 mod dicom_tag;
 mod dicom_handlers;
 mod dicom;
-mod abstractions;
 
 use std::env;
 use std::time::Instant;

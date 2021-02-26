@@ -3,7 +3,7 @@ use std::io::{Read, Seek, SeekFrom};
 
 use crate::utils;
 use crate::readers::*;
-use crate::abstractions::*;
+use crate::dicom_handlers::*;
 use crate::dicom_tag::*;
 use crate::vr_type::*;
 use crate::tags::*;
