@@ -170,9 +170,9 @@ impl TransferSyntax {
             vr_encoding: VrEncoding::Explicit, 
             endian_encoding: EndianEncoding::LittleEndian 
         }
-    }
-    
-    pub fn parse(syntax: &String) -> TransferSyntax {
+    }    
+
+    pub fn parse_str(syntax: &str) -> TransferSyntax {
         if syntax.eq_ignore_ascii_case(EXPLICIT_LE) {
             return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
         }
@@ -185,7 +185,7 @@ impl TransferSyntax {
         else {
             return TransferSyntax { vr_encoding: VrEncoding::Explicit, endian_encoding: EndianEncoding::LittleEndian };
         }
-    }
+    }    
 }    
 
 pub fn not_compressed(syntax: Option<&str>) -> bool {

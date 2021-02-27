@@ -36,7 +36,7 @@ impl fmt::Display for VrType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             VrType::OtherByte           => write!(f, "OtherByte"),
-            VrType::OtherFloat          => write!(f, "OtherFloat"),            
+            VrType::OtherFloat          => write!(f, "OtherFloat"),
             VrType::OtherWord           => write!(f, "OtherWord"),
             VrType::Unknown             => write!(f, "Unknown"),
             VrType::UnlimitedText       => write!(f, "UnlimitedText"),

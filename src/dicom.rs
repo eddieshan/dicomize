@@ -42,53 +42,15 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
 
     let stream_pos = endian_reader.pos();
 
-    let (tag_value, value_length) = match test_length < 0 {
-        true => {
-            let value = match vr {
-                VrType::Delimiter | 
-                VrType::SequenceOfItems => endian_reader.read_ignored(),
-                VrType::Attribute       => endian_reader.read_attribute(),
-                _                       => panic!("Tag ({}, {}) has invalid value length {}", group, element, test_length)
-            };
-            (value, None)
-        },
-        false => {
-            let length = usize::try_from(test_length).unwrap(); // TODO: proper error propagation instead of unwrap.
-            let value = match vr {
-                VrType::Delimiter | 
-                VrType::SequenceOfItems => endian_reader.read_ignored(),
-        
-                VrType::Attribute       => endian_reader.read_attribute(),
-        
-                VrType::UnsignedShort  => endian_reader.read_numeric(length, Numeric::U16),
-                VrType::SignedShort    => endian_reader.read_numeric(length, Numeric::I16),
-                VrType::UnsignedLong   => endian_reader.read_numeric(length, Numeric::U32),
-                VrType::SignedLong     => endian_reader.read_numeric(length, Numeric::I32),
-                VrType::Float          => endian_reader.read_numeric(length, Numeric::F32),
-                VrType::Double         => endian_reader.read_numeric(length, Numeric::F64),
-        
-                VrType::OtherByte | 
-                VrType::OtherFloat | 
-                VrType::OtherWord | 
-                VrType::UnlimitedText | 
-                VrType::Unknown | 
-                VrType::ApplicationEntity | 
-                VrType::AgeString | 
-                VrType::CodeString | 
-                VrType::Date | 
-                VrType::DateTime | 
-                VrType::LongText | 
-                VrType::PersonName | 
-                VrType::ShortString | 
-                VrType::ShortText | 
-                VrType::Time | 
-                VrType::Uid            => endian_reader.read_text(length),
-        
-                VrType::DecimalString | 
-                VrType::IntegerString | 
-                VrType::LongString     => endian_reader.read_numeric_string(length)
-            };
-            (value, Some(length))    
+    let tag_value = match vr {
+        VrType::Delimiter | VrType::SequenceOfItems => None,
+        VrType::Attribute                           => Some(endian_reader.read_bytes(4)),
+        _                                           => match test_length > 0 {
+            true => {
+                let length = usize::try_from(test_length).unwrap();
+                Some(endian_reader.read_bytes(length))
+            },
+            false => None
         }
     };
 
@@ -97,7 +59,6 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         syntax: syntax,
         vr: vr,
         stream_position: stream_pos,
-        value_length: value_length,
         value: tag_value
     }    
 }
@@ -107,14 +68,14 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     let tag_syntax = reader.peek_syntax(syntax);
 
     let tag = next_tag(reader, tag_syntax);
-    let value_length = tag.value_length;
+    let value_length = tag.try_value_len();
+
     let tag_id = tag.id;
     let vr = tag.vr;
 
-    let child_syntax = match (tag_id, &tag.value) {
-        (TRANSFER_SYNTAX_UID, TagValue::String(s)) => TransferSyntax::parse(&s), //  TODO: tags representing child syntax should have their own type.
-        (TRANSFER_SYNTAX_UID, _)                   => panic!("Transfer syntax cannot be encoded in a numeric value"),
-        (_, _)                                     => syntax
+    let child_syntax = match tag.try_transfer_syntax() {
+        Some(s) => s,
+        None    => syntax
     };
 
     let child_index = dicom_handler.handle_tag(parent_index, tag);
@@ -132,7 +93,7 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
         };
 
         parse_tags(reader, parent_index, child_syntax, limit_pos, dicom_handler);
-    }
+    }    
 }
 
 pub fn parse(reader: &mut (impl Read + Seek), dicom_handler: &mut impl DicomHandler) {

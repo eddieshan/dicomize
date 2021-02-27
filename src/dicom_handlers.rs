@@ -21,7 +21,13 @@ impl DicomHandler for DicomContainer {
             None       => "UNKNOWN"
         };
 
-        println!("TAG | {} | ({}, {}) | {} | {}", tag.vr, tag.id.0, tag.id.1, tag_name, tag.value);
+        let vr = format!("{}", tag.vr);
+        let id = format!("({}, {})", tag.id.0, tag.id.1);
+
+        match tag.try_value() {
+            Some(s) => println!("TAG | {:<20} | {:<14} | {:<38} | {}", vr, id, tag_name, s),
+            None    => println!("TAG | {:<20} | {:<14} | {:<38} | [ NO VALUE ]", vr, id, tag_name)
+        }
 
         let child = Node { tag: tag, children: Vec::new() };
         self.nodes.push(child);
@@ -57,7 +63,13 @@ impl DicomHandler for DicomDumper {
             None       => "UNKNOWN"
         };
 
-        println!("TAG | {} | ({}, {}) | {} | {}", tag.vr, tag.id.0, tag.id.1, tag_name, tag.value);
+        let vr = format!("{}", tag.vr);
+        let id = format!("({}, {})", tag.id.0, tag.id.1);
+
+        match tag.try_value() {
+            Some(s) => println!("TAG | {:<20} | {:<14} | {:<38} | {}", vr, id, tag_name, s),
+            None    => println!("TAG | {:<20} | {:<14} | {:<38} | [ NO VALUE ]", vr, id, tag_name)
+        }
 
         self.tags_count += 1;
 
