@@ -17,7 +17,7 @@ pub struct DicomContainer {
 impl DicomHandler for DicomContainer {
     fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize {
         let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
-            Some(name) => name, 
+            Some(name) => name,
             None       => "UNKNOWN"
         };
 

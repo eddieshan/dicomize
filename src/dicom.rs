@@ -97,11 +97,6 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
 }
 
 pub fn parse(reader: &mut (impl Read + Seek), dicom_handler: &mut impl DicomHandler) {
-    // Dicom file header,
-    // - Fixed preamble not to be used: 128 bytes.
-    // - DICOM Prefix "DICM": 4 bytes.
-    // - File Meta Information: sequence of FileMetaAttribute.
-    //   FileMetaAttribute structure: (0002,xxxx), encoded with ExplicitVRLittleEndian Transfer Syntax.
     let (preamble_length, dicm_mark_length) = (128, 4);
     let _ = reader.seek(SeekFrom::Start(preamble_length)).unwrap();
 
