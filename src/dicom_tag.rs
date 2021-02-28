@@ -15,23 +15,23 @@ pub enum VrValue {
     F64(f64),
     Text(String),
     Multi,
-    Attribute(u16, u16),
-    PixelData
+    Id(u16, u16),
+    Binary(usize)
 }
 
 impl fmt::Display for VrValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            VrValue::U32(v)                 => write!(f, "{}", v),
-            VrValue::I32(v)                 => write!(f, "{}", v),
-            VrValue::U16(v)                 => write!(f, "{}", v),
-            VrValue::I16(v)                 => write!(f, "{}", v),
-            VrValue::F32(v)                 => write!(f, "{}", v),
-            VrValue::F64(v)                 => write!(f, "{}", v),
-            VrValue::Attribute(group, name) => write!(f, "({}, {})", group, name),
-            VrValue::Text(s)                => write!(f, "{}", s),
-            VrValue::Multi                  => write!(f, "MULTIPLE VALUE"),
-            VrValue::PixelData              => write!(f, "PIXEL DATA")
+            VrValue::U32(v)          => write!(f, "{}", v),
+            VrValue::I32(v)          => write!(f, "{}", v),
+            VrValue::U16(v)          => write!(f, "{}", v),
+            VrValue::I16(v)          => write!(f, "{}", v),
+            VrValue::F32(v)          => write!(f, "{}", v),
+            VrValue::F64(v)          => write!(f, "{}", v),
+            VrValue::Id(group, name) => write!(f, "({}, {})", group, name),
+            VrValue::Text(s)         => write!(f, "{}", s),
+            VrValue::Multi           => write!(f, "MULTIPLE VALUE"),
+            VrValue::Binary(size)    => write!(f, "{} bytes", size)
         }
     }
 }
@@ -72,52 +72,48 @@ impl DicomTag {
         convert([bytes[0], bytes[1]])
     }
 
-    fn convert_attribute(bytes: &Vec<u8>) -> VrValue {
-        VrValue::Attribute(u16::from_ne_bytes([bytes[0], bytes[1]]), u16::from_ne_bytes([bytes[2], bytes[3]]))
+    fn convert_id(bytes: &Vec<u8>) -> VrValue {
+        VrValue::Id(u16::from_ne_bytes([bytes[0], bytes[1]]), u16::from_ne_bytes([bytes[2], bytes[3]]))
     }
 
     fn vr_value(vr: VrType, bytes: &Vec<u8>) -> VrValue {
         match vr {    
-            VrType::Attribute      => DicomTag::convert_attribute(bytes),
-            VrType::UnsignedShort  => VrValue::U16(DicomTag::convert_16(bytes, u16::from_ne_bytes)),
-            VrType::SignedShort    => VrValue::I16(DicomTag::convert_16(bytes, i16::from_ne_bytes)),
-            VrType::UnsignedLong   => VrValue::U32(DicomTag::convert_32(bytes, u32::from_ne_bytes)),
-            VrType::SignedLong     => VrValue::I32(DicomTag::convert_32(bytes, i32::from_ne_bytes)),
-            VrType::Float          => VrValue::F32(DicomTag::convert_32(bytes, f32::from_ne_bytes)),
-            VrType::Double         => VrValue::F64(DicomTag::convert_64(bytes, f64::from_ne_bytes)),
-            VrType::OtherByte | 
-            VrType::OtherFloat | 
-            VrType::OtherWord | 
-            VrType::UnlimitedText | 
-            VrType::Unknown | 
+            VrType::Attribute           => DicomTag::convert_id(bytes),
+            VrType::UnsignedShort       => VrValue::U16(DicomTag::convert_16(bytes, u16::from_ne_bytes)),
+            VrType::SignedShort         => VrValue::I16(DicomTag::convert_16(bytes, i16::from_ne_bytes)),
+            VrType::UnsignedLong        => VrValue::U32(DicomTag::convert_32(bytes, u32::from_ne_bytes)),
+            VrType::SignedLong          => VrValue::I32(DicomTag::convert_32(bytes, i32::from_ne_bytes)),
+            VrType::Float               => VrValue::F32(DicomTag::convert_32(bytes, f32::from_ne_bytes)),
+            VrType::Double              => VrValue::F64(DicomTag::convert_64(bytes, f64::from_ne_bytes)),           
+
+            VrType::OtherByte         | 
+            VrType::OtherFloat        | 
+            VrType::OtherWord         |    
+            VrType::Unknown             => VrValue::Binary(bytes.len()),  
+
+            VrType::UnlimitedText     |            
             VrType::ApplicationEntity | 
-            VrType::AgeString | 
-            VrType::CodeString | 
-            VrType::Date | 
-            VrType::DateTime | 
-            VrType::LongText | 
-            VrType::PersonName | 
-            VrType::ShortString | 
-            VrType::ShortText | 
-            VrType::Time | 
-            VrType::Uid            => match str::from_utf8(bytes) {
-                Ok(v)  => VrValue::Text(String::from(v)),
-                Err(e) => VrValue::Text(format!("ERROR CONVERTING VR {}", e)) // TODO: convert return value to Result<VrValue, String>.
-            },    
-            VrType::DecimalString | 
-            VrType::IntegerString | 
-            VrType::LongString     => VrValue::Text(String::from(str::from_utf8(bytes).unwrap())),
-            _                      => panic!("Unsupported value conversion for VR {}", vr)
+            VrType::AgeString         | 
+            VrType::CodeString        | 
+            VrType::Date              | 
+            VrType::DateTime          | 
+            VrType::LongText          | 
+            VrType::PersonName        | 
+            VrType::ShortString       | 
+            VrType::ShortText         | 
+            VrType::Time              | 
+            VrType::Uid                 => VrValue::Text(String::from(str::from_utf8(bytes).unwrap())),
+
+            VrType::DecimalString     | 
+            VrType::IntegerString     | 
+            VrType::LongString          => VrValue::Text(String::from(str::from_utf8(bytes).unwrap())),
+
+            _                           => panic!("Unsupported value conversion for VR {}", vr)
         }
     }
 
     pub fn try_value(&self) -> Option<VrValue> {
-        self.value.as_ref().map(|v| {
-            match (self.group, self.element) {
-                tags::PIXEL_DATA => VrValue::PixelData,
-                _                => DicomTag::vr_value(self.vr, v)
-            }
-        })
+        self.value.as_ref().map(|v| DicomTag::vr_value(self.vr, v))
     }
 
     pub fn try_value_len(&self) -> Option<usize> {
