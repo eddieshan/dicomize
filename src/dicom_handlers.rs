@@ -16,13 +16,13 @@ pub struct DicomContainer {
 
 impl DicomHandler for DicomContainer {
     fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize {
-        let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
+        let tag_name = match tags::try_tag_name(tag.group, tag.element) {
             Some(name) => name,
             None       => "UNKNOWN"
         };
 
         let vr = format!("{}", tag.vr);
-        let id = format!("({}, {})", tag.id.0, tag.id.1);
+        let id = format!("({}, {})", tag.group, tag.element);
 
         match tag.try_value() {
             Some(s) => println!("TAG | {:<20} | {:<14} | {:<38} | {}", vr, id, tag_name, s),
@@ -58,13 +58,13 @@ impl DicomDumper {
 
 impl DicomHandler for DicomDumper {
     fn handle_tag(&mut self, _: usize, tag: DicomTag) -> usize {
-        let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
+        let tag_name = match tags::try_tag_name(tag.group, tag.element) {
             Some(name) => name, 
             None       => "UNKNOWN"
         };
 
         let vr = format!("{}", tag.vr);
-        let id = format!("({}, {})", tag.id.0, tag.id.1);
+        let id = format!("({}, {})", tag.group, tag.element);
 
         match tag.try_value() {
             Some(s) => println!("TAG | {:<20} | {:<14} | {:<38} | {}", vr, id, tag_name, s),

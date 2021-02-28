@@ -6,7 +6,7 @@ use crate::dicom_reader::DicomReader;
 use crate::dicom_handlers::*;
 use crate::dicom_tag::*;
 use crate::vr_type::*;
-use crate::tags::*;
+use crate::tags;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 
 const STANDARD_PREAMBLE: &str = "DICM";
@@ -55,12 +55,13 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
     };
 
     DicomTag {
-        id: (group, element),
+        group: group,
+        element: element,
         syntax: syntax,
         vr: vr,
         stream_position: stream_pos,
         value: tag_value
-    }    
+    }
 }
 
 fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: TransferSyntax, limit_pos: u64, dicom_handler: &mut impl DicomHandler) {
@@ -70,8 +71,12 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     let tag = next_tag(reader, tag_syntax);
     let value_length = tag.try_value_len();
 
-    let tag_id = tag.id;
     let vr = tag.vr;
+    
+    let not_a_sequence_delimiter = match (tag.group, tag.element) {
+        tags::SEQUENCE_DELIMITER => false,
+        _                        => true
+    };
 
     let child_syntax = match tag.try_transfer_syntax() {
         Some(s) => s,
@@ -81,13 +86,13 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     let child_index = dicom_handler.handle_tag(parent_index, tag);
     let stream_pos = reader.pos();
 
-    if stream_pos < limit_pos && tag_id != SEQUENCE_DELIMITER {
+    if stream_pos < limit_pos && not_a_sequence_delimiter {
         let next_limit = match (vr, value_length) {
             (VrType::SequenceOfItems, None)    => Some(reader.len()),
             (VrType::SequenceOfItems, Some(l)) => Some(stream_pos + u64::try_from(l).unwrap()),
             (_, _)                             => None
         };
-
+    
         if let Some(l) = next_limit {            
             parse_tags(reader, child_index, child_syntax, l, dicom_handler);
         };

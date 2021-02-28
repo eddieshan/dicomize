@@ -37,7 +37,8 @@ impl fmt::Display for VrValue {
 }
 
 pub struct DicomTag {
-    pub id: (u16, u16),
+    pub group: u16, 
+    pub element: u16,
     pub syntax: TransferSyntax,
     pub vr: VrType,
     pub stream_position: u64,
@@ -47,7 +48,8 @@ pub struct DicomTag {
 impl DicomTag {
     pub fn empty() -> DicomTag {
         DicomTag {
-            id: (0_u16, 0_u16),
+            group: 0, 
+            element: 0,
             syntax: TransferSyntax { 
                 vr_encoding: VrEncoding::Explicit, 
                 endian_encoding: EndianEncoding::LittleEndian
@@ -111,7 +113,7 @@ impl DicomTag {
 
     pub fn try_value(&self) -> Option<VrValue> {
         self.value.as_ref().map(|v| {
-            match self.id {
+            match (self.group, self.element) {
                 tags::PIXEL_DATA => VrValue::PixelData,
                 _                => DicomTag::vr_value(self.vr, v)
             }
@@ -123,7 +125,7 @@ impl DicomTag {
     }
 
     pub fn try_transfer_syntax(&self) -> Option<TransferSyntax> {
-        match (self.id, self.value.as_ref()) {
+        match ((self.group, self.element), self.value.as_ref()) {
             (tags::TRANSFER_SYNTAX_UID, Some(value)) => {
                 //  TODO: tags representing child syntax should have their own type.
                 let syntax = str::from_utf8(value).unwrap();
