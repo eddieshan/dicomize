@@ -1,4 +1,4 @@
-use std::{fmt, str, string};
+use std::{fmt, str};
 
 use crate::tags;
 use crate::vr_type::VrType;

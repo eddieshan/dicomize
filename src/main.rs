@@ -1,5 +1,4 @@
 mod utils;
-mod errors;
 mod binary_reader;
 mod dicom_reader;
 

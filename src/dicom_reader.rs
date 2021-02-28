@@ -5,7 +5,6 @@ use crate::vr_type;
 use crate::vr_type::VrType;
 use crate::tags;
 use crate::transfer_syntax::{VrEncoding, TransferSyntax};
-use crate::dicom_tag::*;
 use crate::binary_reader::*;
 
 pub trait DicomReader {
