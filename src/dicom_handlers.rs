@@ -14,6 +14,12 @@ pub struct DicomContainer {
     pub nodes: Vec<Node>
 }
 
+impl DicomContainer {
+    pub fn new() -> DicomContainer {
+        DicomContainer { nodes: Vec::new() }
+    }
+}
+
 impl DicomHandler for DicomContainer {
     fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize {
         let tag_name = match tags::try_tag_name(tag.group, tag.element) {

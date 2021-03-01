@@ -2,7 +2,7 @@ use std::{fmt, str};
 
 use crate::tags;
 use crate::vr_type::VrType;
-use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
+use crate::transfer_syntax::TransferSyntax;
 
 pub const UNKNOWN_VALUE: &str = "UNKNOWN";
 
@@ -46,19 +46,6 @@ pub struct DicomTag {
 }
 
 impl DicomTag {
-    pub fn empty() -> DicomTag {
-        DicomTag {
-            group: 0, 
-            element: 0,
-            syntax: TransferSyntax { 
-                vr_encoding: VrEncoding::Explicit, 
-                endian_encoding: EndianEncoding::LittleEndian
-            },
-            vr: VrType::Unknown,
-            stream_position: 0,
-            value: None
-        }
-    }
 
     fn convert_64<T1>(bytes: &Vec<u8>, convert: fn([u8; 8]) -> T1) -> T1 {
         convert([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]])
