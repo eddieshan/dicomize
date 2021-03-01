@@ -5,18 +5,18 @@ pub trait DicomHandler {
     fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize;
 }
 
-pub struct Node {
-    pub tag: DicomTag,
-    pub children: Vec<usize>
+pub struct DicomNode {
+    tag: Option<DicomTag>, 
+    children: Vec<usize>
 }
 
 pub struct DicomContainer {
-    pub nodes: Vec<Node>
+    pub nodes: Vec<DicomNode>
 }
 
 impl DicomContainer {
     pub fn new() -> DicomContainer {
-        DicomContainer { nodes: Vec::new() }
+        DicomContainer { nodes: vec! [ DicomNode { tag: None, children: Vec::new() } ] }
     }
 }
 
@@ -35,7 +35,7 @@ impl DicomHandler for DicomContainer {
             None    => println!("TAG | {:<20} | {:<14} | {:<38} | [ NO VALUE ]", vr, id, tag_name)
         }
 
-        let child = Node { tag: tag, children: Vec::new() };
+        let child = DicomNode { tag: Some(tag), children: Vec::new() };
         self.nodes.push(child);
 
         let child_index = self.nodes.len() - 1;
