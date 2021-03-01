@@ -41,7 +41,6 @@ pub struct DicomTag {
     pub element: u16,
     pub syntax: TransferSyntax,
     pub vr: VrType,
-    pub stream_position: u64,
     pub value: Option<Vec<u8>>
 }
 

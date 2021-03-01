@@ -40,8 +40,6 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         }
     };
 
-    let stream_pos = endian_reader.pos();
-
     let tag_value = match vr {
         VrType::Delimiter | VrType::SequenceOfItems => None,
         VrType::Attribute                           => Some(endian_reader.read_bytes(4)),
@@ -59,7 +57,6 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         element: element,
         syntax: syntax,
         vr: vr,
-        stream_position: stream_pos,
         value: tag_value
     }
 }
