@@ -78,26 +78,8 @@ pub enum VrType {
 impl fmt::Display for VrType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            VrType::OtherByte           => write!(f, "OtherByte"),
-            VrType::OtherFloat          => write!(f, "OtherFloat"),
-            VrType::OtherWord           => write!(f, "OtherWord"),
-            VrType::Unknown             => write!(f, "Unknown"),
-            VrType::UnlimitedText       => write!(f, "UnlimitedText"),
+            VrType::Delimiter           => write!(f, "Delimiter"),
             VrType::SequenceOfItems     => write!(f, "SequenceOfItems"),
-            VrType::ApplicationEntity   => write!(f, "ApplicationEntity"),
-            VrType::AgeString           => write!(f, "AgeString"),
-            VrType::CodeString          => write!(f, "CodeString"),
-            VrType::Date                => write!(f, "Date"),
-            VrType::DateTime            => write!(f, "DateTime"),
-            VrType::LongText            => write!(f, "LongText"),
-            VrType::PersonName          => write!(f, "PersonName"),
-            VrType::ShortString         => write!(f, "ShortString"),
-            VrType::ShortText           => write!(f, "ShortText"),
-            VrType::Time                => write!(f, "Time"),
-            VrType::DecimalString       => write!(f, "DecimalString"),
-            VrType::IntegerString       => write!(f, "IntegerString"),
-            VrType::LongString          => write!(f, "LongString"),
-            VrType::Uid                 => write!(f, "Uid"),
             VrType::Attribute           => write!(f, "Attribute"),
             VrType::UnsignedLong        => write!(f, "UnsignedLong"),
             VrType::UnsignedShort       => write!(f, "UnsignedShort"),
@@ -105,7 +87,27 @@ impl fmt::Display for VrType {
             VrType::SignedShort         => write!(f, "SignedShort"),
             VrType::Float               => write!(f, "Float"),
             VrType::Double              => write!(f, "Double"),
-            VrType::Delimiter           => write!(f, "Delimiter")
+           
+            VrType::ApplicationEntity   => write!(f, "ApplicationEntity"),
+            VrType::AgeString           => write!(f, "AgeString"),
+            VrType::CodeString          => write!(f, "CodeString"),
+            VrType::LongText            => write!(f, "LongText"),
+            VrType::PersonName          => write!(f, "PersonName"),
+            VrType::ShortString         => write!(f, "ShortString"),
+            VrType::ShortText           => write!(f, "ShortText"),
+            VrType::UnlimitedText       => write!(f, "UnlimitedText"),
+            VrType::Date                => write!(f, "Date"),
+            VrType::DateTime            => write!(f, "DateTime"),
+            VrType::Time                => write!(f, "Time"),
+            VrType::DecimalString       => write!(f, "DecimalString"),
+            VrType::IntegerString       => write!(f, "IntegerString"),
+            VrType::LongString          => write!(f, "LongString"),
+            VrType::Uid                 => write!(f, "Uid"),
+            VrType::OtherByte           => write!(f, "OtherByte"),
+            VrType::OtherFloat          => write!(f, "OtherFloat"),
+            VrType::OtherWord           => write!(f, "OtherWord"),
+            VrType::Unknown             => write!(f, "Unknown"),
+
         }
     }
 }

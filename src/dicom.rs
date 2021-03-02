@@ -1,3 +1,4 @@
+use std::{str, string};
 use std::convert::TryFrom;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -17,6 +18,22 @@ fn endian_reader<T: Read+Seek>(reader: &mut T, syntax: TransferSyntax) -> &mut T
         EndianEncoding::LittleEndian => reader,
         EndianEncoding::BigEndian    => reader
     }
+}
+
+fn convert_64<T1>(bytes: &Vec<u8>, convert: fn([u8; 8]) -> T1) -> T1 {
+    convert([bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7]])
+}
+
+fn convert_32<T1>(bytes: &Vec<u8>, convert: fn([u8; 4]) -> T1) -> T1 {
+    convert([bytes[0], bytes[1], bytes[2], bytes[3]])
+}
+
+fn convert_16<T1>(bytes: &Vec<u8>, convert: fn([u8; 2]) -> T1) -> T1 {
+    convert([bytes[0], bytes[1]])
+}
+
+fn convert_id(bytes: &Vec<u8>) -> VrValue {
+    VrValue::Id(u16::from_ne_bytes([bytes[0], bytes[1]]), u16::from_ne_bytes([bytes[2], bytes[3]]))
 }
 
 fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag {
@@ -40,16 +57,45 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         }
     };
 
+    let bytes = match test_length > 0 {
+        true  => endian_reader.read_bytes(usize::try_from(test_length).unwrap()),
+        false => Vec::new()
+    };
+
     let tag_value = match vr {
-        VrType::Delimiter | VrType::SequenceOfItems => None,
-        VrType::Attribute                           => Some(endian_reader.read_bytes(4)),
-        _                                           => match test_length > 0 {
-            true => {
-                let length = usize::try_from(test_length).unwrap();
-                Some(endian_reader.read_bytes(length))
-            },
-            false => None
-        }
+        VrType::Delimiter           => VrValue::Empty,
+        VrType::SequenceOfItems     => VrValue::Empty,
+        VrType::Attribute           => convert_id(&bytes),
+
+        VrType::UnsignedShort       => VrValue::U16(convert_16(&bytes, u16::from_ne_bytes)),
+        VrType::SignedShort         => VrValue::I16(convert_16(&bytes, i16::from_ne_bytes)),
+        VrType::UnsignedLong        => VrValue::U32(convert_32(&bytes, u32::from_ne_bytes)),
+        VrType::SignedLong          => VrValue::I32(convert_32(&bytes, i32::from_ne_bytes)),
+        VrType::Float               => VrValue::F32(convert_32(&bytes, f32::from_ne_bytes)),
+        VrType::Double              => VrValue::F64(convert_64(&bytes, f64::from_ne_bytes)),
+
+       
+        VrType::ApplicationEntity   => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::AgeString           => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::CodeString          => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::LongText            => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::PersonName          => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::ShortString         => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::ShortText           => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::UnlimitedText       => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+
+        VrType::Date                => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::DateTime            => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::Time                => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::DecimalString       => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::IntegerString       => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::LongString          => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+        VrType::Uid                 => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
+
+        VrType::OtherByte           => VrValue::Binary(bytes.len()),
+        VrType::OtherFloat          => VrValue::Binary(bytes.len()),
+        VrType::OtherWord           => VrValue::Binary(bytes.len()),
+        VrType::Unknown             => VrValue::Binary(bytes.len())
     };
 
     DicomTag {
@@ -57,7 +103,8 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         element: element,
         syntax: syntax,
         vr: vr,
-        value: tag_value
+        value: tag_value,
+        value_length: bytes.len()
     }
 }
 
@@ -66,7 +113,7 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     let tag_syntax = reader.peek_syntax(syntax);
 
     let tag = next_tag(reader, tag_syntax);
-    let value_length = tag.try_value_len();
+    let value_length = tag.value_length;
 
     let vr = tag.vr;
     
@@ -84,9 +131,9 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     let stream_pos = reader.pos();
 
     if stream_pos < limit_pos && not_a_sequence_delimiter {
-        let next_limit = match (vr, value_length) {
-            (VrType::SequenceOfItems, None)    => Some(reader.len()),
-            (VrType::SequenceOfItems, Some(l)) => Some(stream_pos + u64::try_from(l).unwrap()),
+        let next_limit = match (vr, value_length > 0) {
+            (VrType::SequenceOfItems, false)   => Some(reader.len()),
+            (VrType::SequenceOfItems, true)    => Some(stream_pos + u64::try_from(value_length).unwrap()),
             (_, _)                             => None
         };
     
