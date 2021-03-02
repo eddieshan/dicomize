@@ -112,44 +112,36 @@ impl fmt::Display for VrType {
     }
 }
 
-pub const CATALOGUE: [(u16, VrType); 28] = [
-    (DELIMITER, VrType::Delimiter),
-    (SEQUENCE_OF_ITEMS, VrType::SequenceOfItems),
-    (UID, VrType::Uid),
-    (ATTRIBUTE, VrType::Attribute),
-    (APPLICATION_ENTITY, VrType::ApplicationEntity),
-    (UNSIGNED_LONG, VrType::UnsignedLong),
-    (UNSIGNED_SHORT, VrType::UnsignedShort),
-    (SIGNED_LONG, VrType::SignedLong),
-    (SIGNED_SHORT, VrType::SignedShort),
-    (FLOAT, VrType::Float),
-    (DOUBLE, VrType::Double),
-    (AGE_STRING, VrType::AgeString),
-    (CODE_STRING, VrType::CodeString),
-    (LONG_TEXT, VrType::LongText),
-    (PERSON_NAME, VrType::PersonName),
-    (SHORT_STRING, VrType::ShortString),
-    (SHORT_TEXT, VrType::ShortText),
-    (UNLIMITED_TEXT, VrType::UnlimitedText),
-    (DATE, VrType::Date),
-    (DATE_TIME, VrType::DateTime),
-    (TIME, VrType::Time),
-    (DECIMAL_STRING, VrType::DecimalString),
-    (INTEGER_STRING, VrType::IntegerString),
-    (LONG_STRING, VrType::LongText),
-    (OTHER_BYTE, VrType::OtherByte),
-    (OTHER_FLOAT, VrType::OtherFloat),
-    (OTHER_WORD, VrType::OtherWord),
-    (UNKNOWN, VrType::Unknown)
-];
-
 pub fn get_vr_type(vr_code: u16) -> VrType {
-
-    for item in CATALOGUE.iter() {
-        if item.0 == vr_code {
-            return item.1;
-        }
+    match vr_code {
+        DELIMITER           => VrType::Delimiter,
+        SEQUENCE_OF_ITEMS   => VrType::SequenceOfItems,
+        UID                 => VrType::Uid,
+        ATTRIBUTE           => VrType::Attribute,
+        APPLICATION_ENTITY  => VrType::ApplicationEntity,
+        UNSIGNED_LONG       => VrType::UnsignedLong,
+        UNSIGNED_SHORT      => VrType::UnsignedShort,
+        SIGNED_LONG         => VrType::SignedLong,
+        SIGNED_SHORT        => VrType::SignedShort,
+        FLOAT               => VrType::Float,
+        DOUBLE              => VrType::Double,
+        AGE_STRING          => VrType::AgeString,
+        CODE_STRING         => VrType::CodeString,
+        LONG_TEXT           => VrType::LongText,
+        PERSON_NAME         => VrType::PersonName,
+        SHORT_STRING        => VrType::ShortString,
+        SHORT_TEXT          => VrType::ShortText,
+        UNLIMITED_TEXT      => VrType::UnlimitedText,
+        DATE                => VrType::Date,
+        DATE_TIME           => VrType::DateTime,
+        TIME                => VrType::Time,
+        DECIMAL_STRING      => VrType::DecimalString,
+        INTEGER_STRING      => VrType::IntegerString,
+        LONG_STRING         => VrType::LongText,
+        OTHER_BYTE          => VrType::OtherByte,
+        OTHER_FLOAT         => VrType::OtherFloat,
+        OTHER_WORD          => VrType::OtherWord,
+        UNKNOWN             => VrType::Unknown,
+        _                   => VrType::Unknown
     }
-
-    return VrType::Unknown;
 }
