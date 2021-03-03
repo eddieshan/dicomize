@@ -1,46 +1,46 @@
 use std::fmt;
 
 // Structural types.
-const DELIMITER:u16 = 19524;          // Code: "DL".
-const SEQUENCE_OF_ITEMS:u16 = 20819;  // Code: "SQ".
-const ATTRIBUTE:u16 = 21569;          // Code: "AT".
-const UID:u16 = 18773;                // Code: "UI".
-const APPLICATION_ENTITY:u16 = 17729; // Code: "AE".
+pub const DELIMITER:u16 = 19524;          // Code: "DL".
+pub const SEQUENCE_OF_ITEMS:u16 = 20819;  // Code: "SQ".
+pub const ATTRIBUTE:u16 = 21569;          // Code: "AT".
+pub const UID:u16 = 18773;                // Code: "UI".
+pub const APPLICATION_ENTITY:u16 = 17729; // Code: "AE".
 
 // Numeric types.
-const UNSIGNED_LONG:u16 = 19541;      // Code: "UL".   
-const UNSIGNED_SHORT:u16 = 21333;     // Code: "US".    
-const SIGNED_LONG:u16 = 19539;        // Code: "SL". 
-const SIGNED_SHORT:u16 = 21331;       // Code: "SS".  
-const FLOAT:u16 = 19526;              // Code: "FL".
-const DOUBLE:u16 = 17478;             // Code: "FD".
+pub const UNSIGNED_LONG:u16 = 19541;      // Code: "UL".   
+pub const UNSIGNED_SHORT:u16 = 21333;     // Code: "US".    
+pub const SIGNED_LONG:u16 = 19539;        // Code: "SL". 
+pub const SIGNED_SHORT:u16 = 21331;       // Code: "SS".  
+pub const FLOAT:u16 = 19526;              // Code: "FL".
+pub const DOUBLE:u16 = 17478;             // Code: "FD".
 
 // String types.
-const AGE_STRING:u16 = 21313;         // Code: "AS".
-const CODE_STRING:u16 = 21315;        // Code: "CS". 
-const LONG_TEXT:u16 = 21580;          // Code: "LT".
-const PERSON_NAME:u16 = 20048;        // Code: "PN". 
-const SHORT_STRING:u16 = 18515;       // Code: "SH".  
-const SHORT_TEXT:u16 = 21587;         // Code: "ST".
-const UNLIMITED_TEXT:u16 = 21589;     // Code: "UT".
+pub const AGE_STRING:u16 = 21313;         // Code: "AS".
+pub const CODE_STRING:u16 = 21315;        // Code: "CS". 
+pub const LONG_TEXT:u16 = 21580;          // Code: "LT".
+pub const PERSON_NAME:u16 = 20048;        // Code: "PN". 
+pub const SHORT_STRING:u16 = 18515;       // Code: "SH".  
+pub const SHORT_TEXT:u16 = 21587;         // Code: "ST".
+pub const UNLIMITED_TEXT:u16 = 21589;     // Code: "UT".
 
 // Time types.
-const TIME:u16 = 19796;               // Code: "TM".
-const DATE:u16 = 16708;               // Code: "DA".
-const DATE_TIME :u16 = 21572;         // Code: "DT".
+pub const TIME:u16 = 19796;               // Code: "TM".
+pub const DATE:u16 = 16708;               // Code: "DA".
+pub const DATE_TIME :u16 = 21572;         // Code: "DT".
 
 // Numeric string types.
-const DECIMAL_STRING:u16 = 21316;     // Code: "DS".
-const INTEGER_STRING:u16 = 21321;     // Code: "IS".
-const LONG_STRING:u16 = 20300;        // Code: "LO".
+pub const DECIMAL_STRING:u16 = 21316;     // Code: "DS".
+pub const INTEGER_STRING:u16 = 21321;     // Code: "IS".
+pub const LONG_STRING:u16 = 20300;        // Code: "LO".
 
 // "Other" group.
-const OTHER_BYTE:u16 = 16975;         // Code: "OB".
-const OTHER_FLOAT:u16 = 17999;        // Code: "OF".
-const OTHER_WORD:u16 = 22351;         // Code: "OW".
+pub const OTHER_BYTE:u16 = 16975;         // Code: "OB".
+pub const OTHER_FLOAT:u16 = 17999;        // Code: "OF".
+pub const OTHER_WORD:u16 = 22351;         // Code: "OW".
 
 // Unknown type.
-const UNKNOWN:u16 = 20053;            // Code: "UN".
+pub const UNKNOWN:u16 = 20053;            // Code: "UN".
 
 
 #[derive(Copy, Clone)]
@@ -112,36 +112,43 @@ impl fmt::Display for VrType {
     }
 }
 
-pub fn get_vr_type(vr_code: u16) -> VrType {
+pub enum ValueLengthSize {
+    I32,
+    ReservedI32,
+    I16
+}
+
+pub fn get_vr_type(vr_code: u16) -> (VrType, ValueLengthSize) {
+    //(VrType::Delimiter, ValueLengthSize::I32)
     match vr_code {
-        DELIMITER           => VrType::Delimiter,
-        SEQUENCE_OF_ITEMS   => VrType::SequenceOfItems,
-        UID                 => VrType::Uid,
-        ATTRIBUTE           => VrType::Attribute,
-        APPLICATION_ENTITY  => VrType::ApplicationEntity,
-        UNSIGNED_LONG       => VrType::UnsignedLong,
-        UNSIGNED_SHORT      => VrType::UnsignedShort,
-        SIGNED_LONG         => VrType::SignedLong,
-        SIGNED_SHORT        => VrType::SignedShort,
-        FLOAT               => VrType::Float,
-        DOUBLE              => VrType::Double,
-        AGE_STRING          => VrType::AgeString,
-        CODE_STRING         => VrType::CodeString,
-        LONG_TEXT           => VrType::LongText,
-        PERSON_NAME         => VrType::PersonName,
-        SHORT_STRING        => VrType::ShortString,
-        SHORT_TEXT          => VrType::ShortText,
-        UNLIMITED_TEXT      => VrType::UnlimitedText,
-        DATE                => VrType::Date,
-        DATE_TIME           => VrType::DateTime,
-        TIME                => VrType::Time,
-        DECIMAL_STRING      => VrType::DecimalString,
-        INTEGER_STRING      => VrType::IntegerString,
-        LONG_STRING         => VrType::LongText,
-        OTHER_BYTE          => VrType::OtherByte,
-        OTHER_FLOAT         => VrType::OtherFloat,
-        OTHER_WORD          => VrType::OtherWord,
-        UNKNOWN             => VrType::Unknown,
-        _                   => VrType::Unknown
+        DELIMITER           => (VrType::Delimiter, ValueLengthSize::I32),
+        SEQUENCE_OF_ITEMS   => (VrType::SequenceOfItems, ValueLengthSize::ReservedI32),
+        UID                 => (VrType::Uid, ValueLengthSize::I16),
+        ATTRIBUTE           => (VrType::Attribute, ValueLengthSize::I16),
+        APPLICATION_ENTITY  => (VrType::ApplicationEntity, ValueLengthSize::I16),
+        UNSIGNED_LONG       => (VrType::UnsignedLong, ValueLengthSize::I16),
+        UNSIGNED_SHORT      => (VrType::UnsignedShort, ValueLengthSize::I16),
+        SIGNED_LONG         => (VrType::SignedLong, ValueLengthSize::I16),
+        SIGNED_SHORT        => (VrType::SignedShort, ValueLengthSize::I16),
+        FLOAT               => (VrType::Float, ValueLengthSize::I16),
+        DOUBLE              => (VrType::Double, ValueLengthSize::I16),
+        AGE_STRING          => (VrType::AgeString, ValueLengthSize::I16),
+        CODE_STRING         => (VrType::CodeString, ValueLengthSize::I16),
+        LONG_TEXT           => (VrType::LongText, ValueLengthSize::I16),
+        PERSON_NAME         => (VrType::PersonName, ValueLengthSize::I16),
+        SHORT_STRING        => (VrType::ShortString, ValueLengthSize::I16),
+        SHORT_TEXT          => (VrType::ShortText, ValueLengthSize::I16),
+        UNLIMITED_TEXT      => (VrType::UnlimitedText, ValueLengthSize::ReservedI32),
+        DATE                => (VrType::Date, ValueLengthSize::I16),
+        DATE_TIME           => (VrType::DateTime, ValueLengthSize::I16),
+        TIME                => (VrType::Time, ValueLengthSize::I16),
+        DECIMAL_STRING      => (VrType::DecimalString, ValueLengthSize::I16),
+        INTEGER_STRING      => (VrType::IntegerString, ValueLengthSize::I16),
+        LONG_STRING         => (VrType::LongText, ValueLengthSize::I16),
+        OTHER_BYTE          => (VrType::OtherByte, ValueLengthSize::ReservedI32),
+        OTHER_FLOAT         => (VrType::OtherFloat, ValueLengthSize::ReservedI32),
+        OTHER_WORD          => (VrType::OtherWord, ValueLengthSize::ReservedI32),
+        UNKNOWN             => (VrType::Unknown, ValueLengthSize::ReservedI32),
+        _                   => (VrType::Unknown, ValueLengthSize::ReservedI32)
     }
 }

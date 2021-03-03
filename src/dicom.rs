@@ -6,6 +6,7 @@ use crate::binary_reader::*;
 use crate::dicom_reader::DicomReader;
 use crate::dicom_handlers::*;
 use crate::dicom_tag::*;
+use crate::vr_type;
 use crate::vr_type::*;
 use crate::tags;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
@@ -43,17 +44,19 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
     let group = endian_reader.read_u16();
     let element = endian_reader.read_u16();
 
-    let vr = endian_reader.read_vr(group, element, syntax.vr_encoding);
+    let vr_code = endian_reader.read_vr_code(group, element, syntax.vr_encoding);
+
+    let (vr, length_size) = vr_type::get_vr_type(vr_code);
 
     let test_length = match syntax.vr_encoding {
         VrEncoding::Implicit => endian_reader.read_i32(),
-        VrEncoding::Explicit => match vr {
-            VrType::SequenceOfItems | VrType::OtherByte | VrType::OtherFloat | VrType::OtherWord | VrType::UnlimitedText | VrType::Unknown => {
+        VrEncoding::Explicit => match length_size {
+            ValueLengthSize::ReservedI32 => {
                 endian_reader.skip_reserved();
                 endian_reader.read_i32()
             },
-            VrType::Delimiter => endian_reader.read_i32(),
-            _                 => i32::from(endian_reader.read_i16())
+            ValueLengthSize::I32         => endian_reader.read_i32(),
+            ValueLengthSize::I16         => i32::from(endian_reader.read_i16())
         }
     };
 
@@ -73,7 +76,6 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         VrType::SignedLong          => VrValue::I32(convert_32(&bytes, i32::from_ne_bytes)),
         VrType::Float               => VrValue::F32(convert_32(&bytes, f32::from_ne_bytes)),
         VrType::Double              => VrValue::F64(convert_64(&bytes, f64::from_ne_bytes)),
-
        
         VrType::ApplicationEntity   => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
         VrType::AgeString           => VrValue::Text(String::from(str::from_utf8(&bytes).unwrap())),
