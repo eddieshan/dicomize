@@ -119,7 +119,6 @@ pub enum ValueLengthSize {
 }
 
 pub fn get_vr_type(vr_code: u16) -> (VrType, ValueLengthSize) {
-    //(VrType::Delimiter, ValueLengthSize::I32)
     match vr_code {
         DELIMITER           => (VrType::Delimiter, ValueLengthSize::I32),
         SEQUENCE_OF_ITEMS   => (VrType::SequenceOfItems, ValueLengthSize::ReservedI32),
