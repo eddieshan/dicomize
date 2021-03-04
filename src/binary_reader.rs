@@ -77,28 +77,25 @@ impl <T: Read> BinaryReader for T {
 
     fn read_64<T1>(&mut self, convert: fn([u8; 8]) -> T1) -> T1 {
         let mut buffer = [0; 8];
-        let _ = self.read(&mut buffer[..]).unwrap(); // TODO: proper error propagation instead of unwrap.
-        let value = convert(buffer);
-        value
+        let _ = self.read(&mut buffer).unwrap(); // TODO: proper error propagation instead of unwrap.
+        convert(buffer)
     }
     
     fn read_32<T1>(&mut self, convert: fn([u8; 4]) -> T1) -> T1 {
         let mut buffer = [0; 4];
-        let _ = self.read(&mut buffer[..]).unwrap(); // TODO: proper error propagation instead of unwrap.
-        let value = convert(buffer);
-        value
+        let _ = self.read(&mut buffer).unwrap(); // TODO: proper error propagation instead of unwrap.
+        convert(buffer)
     }
     
     fn read_16<T1>(&mut self, convert: fn([u8; 2]) -> T1) -> T1 {
         let mut buffer = [0; 2];
-        let _ = self.read(&mut buffer[..]).unwrap(); // TODO: proper error propagation instead of unwrap.
-        let value = convert(buffer);
-        value
+        let _ = self.read(&mut buffer).unwrap(); // TODO: proper error propagation instead of unwrap.
+        convert(buffer)
     }
     
     fn read_2(&mut self) -> [u8; 2] {
         let mut buffer = [0; 2];
-        let _ = self.read(&mut buffer[..]).unwrap(); // TODO: proper error propagation instead of unwrap.
+        let _ = self.read(&mut buffer).unwrap(); // TODO: proper error propagation instead of unwrap.
         buffer
     }
     
