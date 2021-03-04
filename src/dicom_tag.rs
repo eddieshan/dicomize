@@ -15,7 +15,7 @@ pub enum VrValue {
     Text(String),
     Multi,
     Id(u16, u16),
-    Binary(usize)
+    Binary(Vec<u8>)
 }
 
 impl fmt::Display for VrValue {
@@ -31,7 +31,7 @@ impl fmt::Display for VrValue {
             VrValue::Id(group, name) => write!(f, "({}, {})", group, name),
             VrValue::Text(s)         => write!(f, "{}", s),
             VrValue::Multi           => write!(f, "MULTIPLE VALUE"),
-            VrValue::Binary(size)    => write!(f, "{} bytes", size)
+            VrValue::Binary(vec)    => write!(f, "{} bytes", vec.len())
         }
     }
 }

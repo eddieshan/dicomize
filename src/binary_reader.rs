@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::io::{Read, Seek, SeekFrom};
 
 pub trait RewindExtensions {
@@ -24,8 +25,6 @@ pub trait BinaryReader {
     
     fn read_2(&mut self) -> [u8; 2];
     
-    fn read_str(&mut self, length: usize) -> String;
-    
     fn read_bytes(&mut self, length: usize) -> Vec<u8>;
     
     fn read_i32(&mut self) -> i32;
@@ -39,6 +38,8 @@ pub trait BinaryReader {
     fn read_f32(&mut self) -> f32;
     
     fn read_f64(&mut self) -> f64;
+
+    fn read_string(&mut self, length: usize) -> String;
 }
 
 impl <T: Seek> SeekExtensions for T {
@@ -86,24 +87,19 @@ impl <T: Read> BinaryReader for T {
         let _ = self.read(&mut buffer[..]).unwrap(); // TODO: proper error propagation instead of unwrap.
         let value = convert(buffer);
         value
-    }    
+    }
     
     fn read_16<T1>(&mut self, convert: fn([u8; 2]) -> T1) -> T1 {
         let mut buffer = [0; 2];
         let _ = self.read(&mut buffer[..]).unwrap(); // TODO: proper error propagation instead of unwrap.
         let value = convert(buffer);
         value
-    }    
+    }
     
     fn read_2(&mut self) -> [u8; 2] {
         let mut buffer = [0; 2];
         let _ = self.read(&mut buffer[..]).unwrap(); // TODO: proper error propagation instead of unwrap.
         buffer
-    }
-    
-    fn read_str(&mut self, length: usize) -> String {
-        let buffer = self.read_bytes(length);
-        String::from_utf8(buffer).unwrap() // TODO: proper error propagation instead of unwrap.
     }
     
     fn read_bytes(&mut self, length: usize) -> Vec<u8> {
@@ -135,4 +131,11 @@ impl <T: Read> BinaryReader for T {
     fn read_f64(&mut self) -> f64 {
         self.read_64(f64::from_ne_bytes)
     }
+
+    fn read_string(&mut self, length: usize) -> String {
+        let mut buffer = String::new();
+        let safe_length = u64::try_from(length).unwrap();
+        let _ = self.take(safe_length).read_to_string(&mut buffer).unwrap();
+        buffer
+    }    
 }
