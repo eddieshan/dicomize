@@ -10,7 +10,7 @@ use crate::binary_reader::*;
 pub trait DicomReader {
     fn read_vr_code(&mut self, group: u16, element: u16, vr_encoding: VrEncoding) -> u16;
 
-    fn skip_reserved(&mut self);
+    fn read_reserved_i32(&mut self) -> i32;
 
     fn peek_syntax(&mut self, syntax: TransferSyntax) -> TransferSyntax;
 }
@@ -30,8 +30,9 @@ impl <T: Read + Seek> DicomReader for T {
         }
     }    
     
-    fn skip_reserved(&mut self) {
+    fn read_reserved_i32(&mut self) -> i32 {
         let _ = self.seek(SeekFrom::Current(2)).unwrap(); // TODO: proper error propagation instead of unwrap.
+        self.read_i32()
     }
 
     fn peek_syntax(&mut self, syntax: TransferSyntax) -> TransferSyntax {
