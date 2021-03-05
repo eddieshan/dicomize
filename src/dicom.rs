@@ -30,13 +30,9 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
 
     let vr_code = endian_reader.read_vr_code(group, element, syntax.vr_encoding);
 
-    let (vr, length_size) = vr_type::get_vr_type(vr_code);
-
-    let test_length = match (syntax.vr_encoding, length_size) {
-        (VrEncoding::Implicit, _)                            => endian_reader.read_i32(),
-        (VrEncoding::Explicit, ValueLengthSize::ReservedI32) => endian_reader.read_reserved_i32(),
-        (VrEncoding::Explicit, ValueLengthSize::I32)         => endian_reader.read_i32(),
-        (VrEncoding::Explicit, ValueLengthSize::I16)         => i32::from(endian_reader.read_i16())
+    let (vr, test_length) = match syntax.vr_encoding {
+        VrEncoding::Implicit => (vr_type::get_implicit_vr(vr_code), endian_reader.read_i32()),
+        VrEncoding::Explicit => vr_type::get_explicit_vr(vr_code, endian_reader)
     };
 
     let value_length = match test_length > 0 {
