@@ -21,7 +21,7 @@ const PIXEL_PADDING_RANGE_LIMIT: (u16, u16) = (0x0028u16, 0x0121u16);
 const PIXEL_REPRESENTATION: (u16, u16) = (0x0028u16, 0x0103u16);
 pub const SEQUENCE_DELIMITER: (u16, u16) = (0xFFFEu16, 0xE0DDu16);
 
-pub const TAGS: [((u16,u16), (&'static str, u16)); 2999] = [
+pub const TAGS: [((u16,u16), (&str, u16)); 2999] = [
     ((0xFFFEu16, 0xE000u16), ("Item", vr_type::DELIMITER)),
     ((0xFFFEu16, 0xE00Du16), ("Item Delimitation Item", vr_type::DELIMITER)),
     (SEQUENCE_DELIMITER, ("Sequence Delimitation Item", vr_type::DELIMITER)),
