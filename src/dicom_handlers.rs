@@ -1,26 +1,37 @@
-use crate::abstractions;
 use crate::tags;
 use crate::dicom_tag::DicomTag;
 
-pub struct Node {
-    pub tag: DicomTag,
-    pub children: Vec<usize>
+pub trait DicomHandler {
+    fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize;
+}
+
+pub struct DicomNode {
+    tag: Option<DicomTag>, 
+    children: Vec<usize>
 }
 
 pub struct DicomContainer {
-    pub nodes: Vec<Node>
+    pub nodes: Vec<DicomNode>
 }
 
-impl abstractions::DicomHandler for DicomContainer {
+impl DicomContainer {
+    pub fn new() -> DicomContainer {
+        DicomContainer { nodes: vec! [ DicomNode { tag: None, children: Vec::new() } ] }
+    }
+}
+
+impl DicomHandler for DicomContainer {
     fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize {
-        let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
-            Some(name) => name, 
+        let tag_name = match tags::try_tag_name(tag.group, tag.element) {
+            Some(name) => name,
             None       => "UNKNOWN"
         };
 
-        println!("TAG | {} | ({}, {}) | {} | {}", tag.vr, tag.id.0, tag.id.1, tag_name, tag.value);
+        let id = format!("({}, {})", tag.group, tag.element);
 
-        let child = Node { tag: tag, children: Vec::new() };
+        println!("TAG | {:<14} | {:<38} | {}", id, tag_name, tag.value);
+
+        let child = DicomNode { tag: Some(tag), children: Vec::new() };
         self.nodes.push(child);
 
         let child_index = self.nodes.len() - 1;
@@ -47,14 +58,16 @@ impl DicomDumper {
 }
 
 
-impl abstractions::DicomHandler for DicomDumper {
+impl DicomHandler for DicomDumper {
     fn handle_tag(&mut self, _: usize, tag: DicomTag) -> usize {
-        let tag_name = match tags::try_tag_name(tag.id.0, tag.id.1) {
+        let tag_name = match tags::try_tag_name(tag.group, tag.element) {
             Some(name) => name, 
             None       => "UNKNOWN"
         };
 
-        println!("TAG | {} | ({}, {}) | {} | {}", tag.vr, tag.id.0, tag.id.1, tag_name, tag.value);
+        let id = format!("({}, {})", tag.group, tag.element);
+        
+        println!("TAG | {:<14} | {:<38} | {}", id, tag_name, tag.value);
 
         self.tags_count += 1;
 

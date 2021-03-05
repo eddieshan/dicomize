@@ -1,112 +1,80 @@
-use std::fmt;
+use std::io::{Read, Seek};
 
-#[derive(Copy, Clone)]
-pub enum VrType {
-    OtherByte,
-    OtherFloat,
-    OtherWord,
-    Unknown,
-    UnlimitedText,
-    SequenceOfItems,
-    ApplicationEntity,
-    AgeString,
-    CodeString,
-    Date,
-    DateTime,
-    LongText,
-    PersonName,
-    ShortString,
-    ShortText,
-    Time,
-    DecimalString,
-    IntegerString,
-    LongString,
-    Uid,
-    Attribute,
-    UnsignedLong,
-    UnsignedShort,
-    SignedLong,
-    SignedShort,
-    Float,
-    Double,
-    Delimiter
-}
+use crate::binary_reader::*;
+use crate::dicom_reader::DicomReader;
 
-impl fmt::Display for VrType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VrType::OtherByte           => write!(f, "OtherByte"),
-            VrType::OtherFloat          => write!(f, "OtherFloat"),            
-            VrType::OtherWord           => write!(f, "OtherWord"),
-            VrType::Unknown             => write!(f, "Unknown"),
-            VrType::UnlimitedText       => write!(f, "UnlimitedText"),
-            VrType::SequenceOfItems     => write!(f, "SequenceOfItems"),
-            VrType::ApplicationEntity   => write!(f, "ApplicationEntity"),
-            VrType::AgeString           => write!(f, "AgeString"),
-            VrType::CodeString          => write!(f, "CodeString"),
-            VrType::Date                => write!(f, "Date"),
-            VrType::DateTime            => write!(f, "DateTime"),
-            VrType::LongText            => write!(f, "LongText"),
-            VrType::PersonName          => write!(f, "PersonName"),
-            VrType::ShortString         => write!(f, "ShortString"),
-            VrType::ShortText           => write!(f, "ShortText"),
-            VrType::Time                => write!(f, "Time"),
-            VrType::DecimalString       => write!(f, "DecimalString"),
-            VrType::IntegerString       => write!(f, "IntegerString"),
-            VrType::LongString          => write!(f, "LongString"),
-            VrType::Uid                 => write!(f, "Uid"),
-            VrType::Attribute           => write!(f, "Attribute"),
-            VrType::UnsignedLong        => write!(f, "UnsignedLong"),
-            VrType::UnsignedShort       => write!(f, "UnsignedShort"),
-            VrType::SignedLong          => write!(f, "SignedLong"),
-            VrType::SignedShort         => write!(f, "SignedShort"),
-            VrType::Float               => write!(f, "Float"),
-            VrType::Double              => write!(f, "Double"),
-            VrType::Delimiter           => write!(f, "Delimiter")
-        }
+// Structural types.
+pub const DELIMITER:u16 = 19524;          // Code: "DL".
+pub const SEQUENCE_OF_ITEMS:u16 = 20819;  // Code: "SQ".
+pub const ATTRIBUTE:u16 = 21569;          // Code: "AT".
+pub const UID:u16 = 18773;                // Code: "UI".
+pub const APPLICATION_ENTITY:u16 = 17729; // Code: "AE".
+
+// Numeric types.
+pub const UNSIGNED_LONG:u16 = 19541;      // Code: "UL".   
+pub const UNSIGNED_SHORT:u16 = 21333;     // Code: "US".    
+pub const SIGNED_LONG:u16 = 19539;        // Code: "SL". 
+pub const SIGNED_SHORT:u16 = 21331;       // Code: "SS".  
+pub const FLOAT:u16 = 19526;              // Code: "FL".
+pub const DOUBLE:u16 = 17478;             // Code: "FD".
+
+// String types.
+pub const AGE_STRING:u16 = 21313;         // Code: "AS".
+pub const CODE_STRING:u16 = 21315;        // Code: "CS". 
+pub const LONG_TEXT:u16 = 21580;          // Code: "LT".
+pub const PERSON_NAME:u16 = 20048;        // Code: "PN". 
+pub const SHORT_STRING:u16 = 18515;       // Code: "SH".  
+pub const SHORT_TEXT:u16 = 21587;         // Code: "ST".
+pub const UNLIMITED_TEXT:u16 = 21589;     // Code: "UT".
+
+// Time types.
+pub const TIME:u16 = 19796;               // Code: "TM".
+pub const DATE:u16 = 16708;               // Code: "DA".
+pub const DATE_TIME :u16 = 21572;         // Code: "DT".
+
+// Numeric string types.
+pub const DECIMAL_STRING:u16 = 21316;     // Code: "DS".
+pub const INTEGER_STRING:u16 = 21321;     // Code: "IS".
+pub const LONG_STRING:u16 = 20300;        // Code: "LO".
+
+// "Other" group.
+pub const OTHER_BYTE:u16 = 16975;         // Code: "OB".
+pub const OTHER_FLOAT:u16 = 17999;        // Code: "OF".
+pub const OTHER_WORD:u16 = 22351;         // Code: "OW".
+
+// Unknown type.
+pub const UNKNOWN:u16 = 20053;            // Code: "UN".
+
+pub fn get_explicit_vr<T: Read+Seek>(vr_code: u16, reader: &mut T) -> i32 {
+    match vr_code {
+        DELIMITER           => reader.read_i32(),
+        SEQUENCE_OF_ITEMS   => reader.read_reserved_i32(),
+        UID                 => i32::from(reader.read_i16()),
+        ATTRIBUTE           => i32::from(reader.read_i16()),
+        APPLICATION_ENTITY  => i32::from(reader.read_i16()),
+        UNSIGNED_LONG       => i32::from(reader.read_i16()),
+        UNSIGNED_SHORT      => i32::from(reader.read_i16()),
+        SIGNED_LONG         => i32::from(reader.read_i16()),
+        SIGNED_SHORT        => i32::from(reader.read_i16()),
+        FLOAT               => i32::from(reader.read_i16()),
+        DOUBLE              => i32::from(reader.read_i16()),
+        AGE_STRING          => i32::from(reader.read_i16()),
+        CODE_STRING         => i32::from(reader.read_i16()),
+        LONG_TEXT           => i32::from(reader.read_i16()),
+        PERSON_NAME         => i32::from(reader.read_i16()),
+        SHORT_STRING        => i32::from(reader.read_i16()),
+        SHORT_TEXT          => i32::from(reader.read_i16()),
+        UNLIMITED_TEXT      => reader.read_reserved_i32(),
+        DATE                => i32::from(reader.read_i16()),
+        DATE_TIME           => i32::from(reader.read_i16()),
+        TIME                => i32::from(reader.read_i16()),
+        DECIMAL_STRING      => i32::from(reader.read_i16()),
+        INTEGER_STRING      => i32::from(reader.read_i16()),
+        LONG_STRING         => i32::from(reader.read_i16()),
+        OTHER_BYTE          => reader.read_reserved_i32(),
+        OTHER_FLOAT         => reader.read_reserved_i32(),
+        OTHER_WORD          => reader.read_reserved_i32(),
+        UNKNOWN             => reader.read_reserved_i32(),
+        _                   => reader.read_reserved_i32()
     }
-}
-
-const CATALOGUE: [(char, char, VrType); 28] = [
-    ('O', 'B', VrType::OtherByte), //Other Byte String
-    ('O', 'F', VrType::OtherFloat), //Other Float String
-    ('O', 'W', VrType::OtherWord), //Other Word String
-    ('U', 'N', VrType::Unknown), //Unknown content
-    ('U', 'T', VrType::UnlimitedText), //Unlimited Text
-    ('S', 'Q', VrType::SequenceOfItems), //Sequence of Items 
-    ('A', 'E', VrType::ApplicationEntity), //Application Entity
-    ('A', 'S', VrType::AgeString), //Age String
-    ('C', 'S', VrType::CodeString), //Code String
-    ('D', 'A', VrType::Date), //Date
-    ('D', 'T', VrType::DateTime), //Date Time
-    ('L', 'T', VrType::LongText), //Long Text
-    ('P', 'N', VrType::PersonName), //Person Name
-    ('S', 'H', VrType::ShortString), //Short String
-    ('S', 'T', VrType::ShortText), //Short Text
-    ('T', 'M', VrType::Time), //Time
-    ('D', 'S', VrType::DecimalString), //Decimal String
-    ('I', 'S', VrType::IntegerString), //Integer String
-    ('L', 'O', VrType::LongText), // Long String
-    ('U', 'I', VrType::Uid), // Unique Identifier (UID)
-    ('A', 'T', VrType::Attribute), // Attribute Tag
-    ('U', 'L', VrType::UnsignedLong), // Unsigned Long (32 Bit, 4 Bytes)
-    ('U', 'S', VrType::UnsignedShort), // Unsigned Short
-    ('S', 'L', VrType::SignedLong), // Signed long (32 Bit, 4 Bytes)
-    ('S', 'S', VrType::SignedShort), // Signed short (16 Bit, 2 Bytes)
-    ('F', 'L', VrType::Float), // Floating Point Single (32 Bit, 4 Byte)
-    ('F', 'D', VrType::Double), // Floating Point Double (64 Bit, 8 Byte)
-    ('D', 'L', VrType::Delimiter), // Special SQ related Data Elements Items:
-];
-
-pub fn get_vr_type(vr_code: &[u8; 2]) -> VrType {
-    let c0 = char::from(vr_code[0]);
-    let c1 = char::from(vr_code[1]);
-
-    for item in CATALOGUE.iter() {
-        if item.0 == c0 && item.1 == c1 {
-            return item.2;
-        }
-    }
-
-    return VrType::Unknown;
 }

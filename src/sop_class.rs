@@ -150,5 +150,5 @@ pub fn try_name(transfer_syntax_id: &str) -> Option<&str> {
         }
     }
 
-    return None;
+    None
 }

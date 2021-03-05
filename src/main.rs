@@ -1,6 +1,6 @@
 mod utils;
-mod errors;
-mod readers;
+mod binary_reader;
+mod dicom_reader;
 
 mod vr_type;
 mod sop_class;
@@ -9,13 +9,11 @@ mod tags;
 mod dicom_tag;
 mod dicom_handlers;
 mod dicom;
-mod abstractions;
 
 use std::env;
 use std::time::Instant;
 use std::fs::File;
 
-use crate::dicom_tag::*;
 use crate::dicom_handlers::*;
 
 const MIN_ARGUMENTS: usize = 2;
@@ -24,9 +22,7 @@ fn load_dcim(dcim_file_path: &str) {
 
     println!("LOADING DICOM TAGS IN {} ...", dcim_file_path);
 
-    let root = Node { tag: DicomTag::empty(), children: Vec::new() };
-
-    let mut container = DicomContainer { nodes: vec![root] };
+    let mut container = DicomContainer::new();
 
     match File::open(dcim_file_path) {
         Ok(mut reader) => dicom::parse(&mut reader, &mut container),
