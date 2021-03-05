@@ -1,4 +1,3 @@
-use std::{str, string};
 use std::convert::TryFrom;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -7,7 +6,6 @@ use crate::dicom_reader::DicomReader;
 use crate::dicom_handlers::*;
 use crate::dicom_tag::*;
 use crate::vr_type;
-use crate::vr_type::*;
 use crate::tags;
 use crate::transfer_syntax::{VrEncoding, EndianEncoding, TransferSyntax};
 
@@ -30,8 +28,8 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
 
     let vr_code = endian_reader.read_vr_code(group, element, syntax.vr_encoding);
 
-    let (vr, test_length) = match syntax.vr_encoding {
-        VrEncoding::Implicit => (vr_type::get_implicit_vr(vr_code), endian_reader.read_i32()),
+    let test_length = match syntax.vr_encoding {
+        VrEncoding::Implicit => endian_reader.read_i32(),
         VrEncoding::Explicit => vr_type::get_explicit_vr(vr_code, endian_reader)
     };
 
@@ -40,46 +38,46 @@ fn next_tag(reader: &mut (impl Read + Seek), syntax: TransferSyntax) -> DicomTag
         false => 0
     };
 
-    let tag_value = match vr {
-        VrType::Delimiter           => VrValue::Empty,
-        VrType::SequenceOfItems     => VrValue::Empty,
-        VrType::Attribute           => VrValue::Id(endian_reader.read_u16(), endian_reader.read_u16()),
+    let tag_value = match vr_code {
+        vr_type::DELIMITER           => VrValue::Delimiter,
+        vr_type::SEQUENCE_OF_ITEMS   => VrValue::SequenceOfItems,
+        vr_type::ATTRIBUTE           => VrValue::Attribute(endian_reader.read_u16(), endian_reader.read_u16()),
 
-        VrType::UnsignedShort       => VrValue::U16(endian_reader.read_vm_16(value_length, u16::from_ne_bytes)),
-        VrType::SignedShort         => VrValue::I16(endian_reader.read_vm_16(value_length, i16::from_ne_bytes)),
-        VrType::UnsignedLong        => VrValue::U32(endian_reader.read_vm_32(value_length, u32::from_ne_bytes)),
-        VrType::SignedLong          => VrValue::I32(endian_reader.read_vm_32(value_length, i32::from_ne_bytes)),
-        VrType::Float               => VrValue::F32(endian_reader.read_vm_32(value_length, f32::from_ne_bytes)),
-        VrType::Double              => VrValue::F64(endian_reader.read_vm_64(value_length, f64::from_ne_bytes)),
+        vr_type::UNSIGNED_SHORT      => VrValue::UnsignedShort(endian_reader.read_vm_16(value_length, u16::from_ne_bytes)),
+        vr_type::SIGNED_SHORT        => VrValue::SignedShort(endian_reader.read_vm_16(value_length, i16::from_ne_bytes)),
+        vr_type::UNSIGNED_LONG       => VrValue::UnsignedLong(endian_reader.read_vm_32(value_length, u32::from_ne_bytes)),
+        vr_type::SIGNED_LONG         => VrValue::SignedLong(endian_reader.read_vm_32(value_length, i32::from_ne_bytes)),
+        vr_type::FLOAT               => VrValue::Float(endian_reader.read_vm_32(value_length, f32::from_ne_bytes)),
+        vr_type::DOUBLE              => VrValue::Double(endian_reader.read_vm_64(value_length, f64::from_ne_bytes)),
        
-        VrType::ApplicationEntity   => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::AgeString           => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::CodeString          => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::LongText            => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::PersonName          => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::ShortString         => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::ShortText           => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::UnlimitedText       => VrValue::Text(endian_reader.read_string(value_length)),
+        vr_type::APPLICATION_ENTITY  => VrValue::ApplicationEntity(endian_reader.read_string(value_length)),
+        vr_type::AGE_STRING          => VrValue::AgeString(endian_reader.read_string(value_length)),
+        vr_type::CODE_STRING         => VrValue::CodeString(endian_reader.read_string(value_length)),
+        vr_type::LONG_TEXT           => VrValue::LongText(endian_reader.read_string(value_length)),
+        vr_type::PERSON_NAME         => VrValue::PersonName(endian_reader.read_string(value_length)),
+        vr_type::SHORT_STRING        => VrValue::ShortString(endian_reader.read_string(value_length)),
+        vr_type::SHORT_TEXT          => VrValue::ShortText(endian_reader.read_string(value_length)),
+        vr_type::UNLIMITED_TEXT      => VrValue::UnlimitedText(endian_reader.read_string(value_length)),
 
-        VrType::Date                => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::DateTime            => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::Time                => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::DecimalString       => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::IntegerString       => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::LongString          => VrValue::Text(endian_reader.read_string(value_length)),
-        VrType::Uid                 => VrValue::Text(endian_reader.read_string(value_length)),
+        vr_type::DATE                => VrValue::Date(endian_reader.read_string(value_length)),
+        vr_type::DATE_TIME           => VrValue::DateTime(endian_reader.read_string(value_length)),
+        vr_type::TIME                => VrValue::Time(endian_reader.read_string(value_length)),
+        vr_type::DECIMAL_STRING      => VrValue::DecimalString(endian_reader.read_string(value_length)),
+        vr_type::INTEGER_STRING      => VrValue::IntegerString(endian_reader.read_string(value_length)),
+        vr_type::LONG_STRING         => VrValue::LongString(endian_reader.read_string(value_length)),
+        vr_type::UID                 => VrValue::Uid(endian_reader.read_string(value_length)),
 
-        VrType::OtherByte           => VrValue::Binary(endian_reader.read_bytes(value_length)),
-        VrType::OtherFloat          => VrValue::Binary(endian_reader.read_bytes(value_length)),
-        VrType::OtherWord           => VrValue::Binary(endian_reader.read_bytes(value_length)),
-        VrType::Unknown             => VrValue::Binary(endian_reader.read_bytes(value_length))
+        vr_type::OTHER_BYTE          => VrValue::OtherByte(endian_reader.read_bytes(value_length)),
+        vr_type::OTHER_FLOAT         => VrValue::OtherFloat(endian_reader.read_bytes(value_length)),
+        vr_type::OTHER_WORD          => VrValue::OtherWord(endian_reader.read_bytes(value_length)),
+        vr_type::UNKNOWN             => VrValue::Unknown(endian_reader.read_bytes(value_length)),
+        _                            => VrValue::Unknown(endian_reader.read_bytes(value_length))
     };
 
     DicomTag {
         group: group,
         element: element,
         syntax: syntax,
-        vr: vr,
         value: tag_value,
         value_length: value_length
     }
@@ -92,7 +90,10 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     let tag = next_tag(reader, tag_syntax);
     let value_length = tag.value_length;
 
-    let vr = tag.vr;
+    let is_sequence = match tag.value {
+        VrValue::SequenceOfItems => true,
+        _                        => false
+    };
     
     let not_a_sequence_delimiter = match (tag.group, tag.element) {
         tags::SEQUENCE_DELIMITER => false,
@@ -108,10 +109,10 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
     let stream_pos = reader.pos();
 
     if stream_pos < limit_pos && not_a_sequence_delimiter {
-        let next_limit = match (vr, value_length > 0) {
-            (VrType::SequenceOfItems, false)   => Some(reader.len()),
-            (VrType::SequenceOfItems, true)    => Some(stream_pos + u64::try_from(value_length).unwrap()),
-            (_, _)                             => None
+        let next_limit = match (is_sequence, value_length > 0) {
+            (true, false) => Some(reader.len()),
+            (true, true)  => Some(stream_pos + u64::try_from(value_length).unwrap()),
+            (_, _)        => None
         };
     
         if let Some(l) = next_limit {            
@@ -119,7 +120,7 @@ fn parse_tags(reader: &mut (impl Read + Seek), parent_index: usize, syntax: Tran
         };
 
         parse_tags(reader, parent_index, child_syntax, limit_pos, dicom_handler);
-    }    
+    }
 }
 
 pub fn parse(reader: &mut (impl Read + Seek), dicom_handler: &mut impl DicomHandler) {

@@ -1,5 +1,4 @@
 use crate::vr_type;
-use crate::vr_type::VrType;
 
 const POSITION: (u16, u16) = (0x0020u16, 0x0032u16);
 const LOCATION: (u16, u16) = (0x0020u16, 0x1041u16);

@@ -2,7 +2,6 @@ use std::io::{Read, Seek, SeekFrom};
 
 use crate::utils;
 use crate::vr_type;
-use crate::vr_type::VrType;
 use crate::tags;
 use crate::transfer_syntax::{VrEncoding, TransferSyntax};
 use crate::binary_reader::*;

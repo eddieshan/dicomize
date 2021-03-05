@@ -1,4 +1,3 @@
-use std::fmt;
 use std::io::{Read, Seek};
 
 use crate::binary_reader::*;
@@ -46,140 +45,36 @@ pub const OTHER_WORD:u16 = 22351;         // Code: "OW".
 // Unknown type.
 pub const UNKNOWN:u16 = 20053;            // Code: "UN".
 
-
-#[derive(Copy, Clone)]
-pub enum VrType {
-    Delimiter,
-    SequenceOfItems,
-    ApplicationEntity,
-    Uid,
-    Attribute,
-    UnsignedLong,
-    UnsignedShort,
-    SignedLong,
-    SignedShort,
-    Float,
-    Double,
-    AgeString,
-    CodeString,
-    LongText,
-    PersonName,
-    ShortString,
-    ShortText,
-    UnlimitedText,
-    Date,
-    DateTime,
-    Time,
-    DecimalString,
-    IntegerString,
-    LongString,
-    OtherByte,
-    OtherFloat,
-    OtherWord,
-    Unknown
-}
-
-impl fmt::Display for VrType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            VrType::Delimiter           => write!(f, "Delimiter"),
-            VrType::SequenceOfItems     => write!(f, "SequenceOfItems"),
-            VrType::Attribute           => write!(f, "Attribute"),
-            VrType::UnsignedLong        => write!(f, "UnsignedLong"),
-            VrType::UnsignedShort       => write!(f, "UnsignedShort"),
-            VrType::SignedLong          => write!(f, "SignedLong"),
-            VrType::SignedShort         => write!(f, "SignedShort"),
-            VrType::Float               => write!(f, "Float"),
-            VrType::Double              => write!(f, "Double"),
-           
-            VrType::ApplicationEntity   => write!(f, "ApplicationEntity"),
-            VrType::AgeString           => write!(f, "AgeString"),
-            VrType::CodeString          => write!(f, "CodeString"),
-            VrType::LongText            => write!(f, "LongText"),
-            VrType::PersonName          => write!(f, "PersonName"),
-            VrType::ShortString         => write!(f, "ShortString"),
-            VrType::ShortText           => write!(f, "ShortText"),
-            VrType::UnlimitedText       => write!(f, "UnlimitedText"),
-            VrType::Date                => write!(f, "Date"),
-            VrType::DateTime            => write!(f, "DateTime"),
-            VrType::Time                => write!(f, "Time"),
-            VrType::DecimalString       => write!(f, "DecimalString"),
-            VrType::IntegerString       => write!(f, "IntegerString"),
-            VrType::LongString          => write!(f, "LongString"),
-            VrType::Uid                 => write!(f, "Uid"),
-            VrType::OtherByte           => write!(f, "OtherByte"),
-            VrType::OtherFloat          => write!(f, "OtherFloat"),
-            VrType::OtherWord           => write!(f, "OtherWord"),
-            VrType::Unknown             => write!(f, "Unknown"),
-
-        }
-    }
-}
-
-pub fn get_implicit_vr(vr_code: u16) -> VrType {
+pub fn get_explicit_vr<T: Read+Seek>(vr_code: u16, reader: &mut T) -> i32 {
     match vr_code {
-        DELIMITER           => VrType::Delimiter,
-        SEQUENCE_OF_ITEMS   => VrType::SequenceOfItems,
-        UID                 => VrType::Uid,
-        ATTRIBUTE           => VrType::Attribute,
-        APPLICATION_ENTITY  => VrType::ApplicationEntity,
-        UNSIGNED_LONG       => VrType::UnsignedLong,
-        UNSIGNED_SHORT      => VrType::UnsignedShort,
-        SIGNED_LONG         => VrType::SignedLong,
-        SIGNED_SHORT        => VrType::SignedShort,
-        FLOAT               => VrType::Float,
-        DOUBLE              => VrType::Double,
-        AGE_STRING          => VrType::AgeString,
-        CODE_STRING         => VrType::CodeString,
-        LONG_TEXT           => VrType::LongText,
-        PERSON_NAME         => VrType::PersonName,
-        SHORT_STRING        => VrType::ShortString,
-        SHORT_TEXT          => VrType::ShortText,
-        UNLIMITED_TEXT      => VrType::UnlimitedText,
-        DATE                => VrType::Date,
-        DATE_TIME           => VrType::DateTime,
-        TIME                => VrType::Time,
-        DECIMAL_STRING      => VrType::DecimalString,
-        INTEGER_STRING      => VrType::IntegerString,
-        LONG_STRING         => VrType::LongText,
-        OTHER_BYTE          => VrType::OtherByte,
-        OTHER_FLOAT         => VrType::OtherFloat,
-        OTHER_WORD          => VrType::OtherWord,
-        UNKNOWN             => VrType::Unknown,
-        _                   => VrType::Unknown
-    }
-}
-
-pub fn get_explicit_vr<T: Read+Seek>(vr_code: u16, reader: &mut T) -> (VrType, i32) {
-    match vr_code {
-        DELIMITER           => (VrType::Delimiter, reader.read_i32()),
-        SEQUENCE_OF_ITEMS   => (VrType::SequenceOfItems, reader.read_reserved_i32()),
-        UID                 => (VrType::Uid, i32::from(reader.read_i16())),
-        ATTRIBUTE           => (VrType::Attribute, i32::from(reader.read_i16())),
-        APPLICATION_ENTITY  => (VrType::ApplicationEntity, i32::from(reader.read_i16())),
-        UNSIGNED_LONG       => (VrType::UnsignedLong, i32::from(reader.read_i16())),
-        UNSIGNED_SHORT      => (VrType::UnsignedShort, i32::from(reader.read_i16())),
-        SIGNED_LONG         => (VrType::SignedLong, i32::from(reader.read_i16())),
-        SIGNED_SHORT        => (VrType::SignedShort, i32::from(reader.read_i16())),
-        FLOAT               => (VrType::Float, i32::from(reader.read_i16())),
-        DOUBLE              => (VrType::Double, i32::from(reader.read_i16())),
-        AGE_STRING          => (VrType::AgeString, i32::from(reader.read_i16())),
-        CODE_STRING         => (VrType::CodeString, i32::from(reader.read_i16())),
-        LONG_TEXT           => (VrType::LongText, i32::from(reader.read_i16())),
-        PERSON_NAME         => (VrType::PersonName, i32::from(reader.read_i16())),
-        SHORT_STRING        => (VrType::ShortString, i32::from(reader.read_i16())),
-        SHORT_TEXT          => (VrType::ShortText, i32::from(reader.read_i16())),
-        UNLIMITED_TEXT      => (VrType::UnlimitedText, reader.read_reserved_i32()),
-        DATE                => (VrType::Date, i32::from(reader.read_i16())),
-        DATE_TIME           => (VrType::DateTime, i32::from(reader.read_i16())),
-        TIME                => (VrType::Time, i32::from(reader.read_i16())),
-        DECIMAL_STRING      => (VrType::DecimalString, i32::from(reader.read_i16())),
-        INTEGER_STRING      => (VrType::IntegerString, i32::from(reader.read_i16())),
-        LONG_STRING         => (VrType::LongText, i32::from(reader.read_i16())),
-        OTHER_BYTE          => (VrType::OtherByte, reader.read_reserved_i32()),
-        OTHER_FLOAT         => (VrType::OtherFloat, reader.read_reserved_i32()),
-        OTHER_WORD          => (VrType::OtherWord, reader.read_reserved_i32()),
-        UNKNOWN             => (VrType::Unknown, reader.read_reserved_i32()),
-        _                   => (VrType::Unknown, reader.read_reserved_i32())
+        DELIMITER           => reader.read_i32(),
+        SEQUENCE_OF_ITEMS   => reader.read_reserved_i32(),
+        UID                 => i32::from(reader.read_i16()),
+        ATTRIBUTE           => i32::from(reader.read_i16()),
+        APPLICATION_ENTITY  => i32::from(reader.read_i16()),
+        UNSIGNED_LONG       => i32::from(reader.read_i16()),
+        UNSIGNED_SHORT      => i32::from(reader.read_i16()),
+        SIGNED_LONG         => i32::from(reader.read_i16()),
+        SIGNED_SHORT        => i32::from(reader.read_i16()),
+        FLOAT               => i32::from(reader.read_i16()),
+        DOUBLE              => i32::from(reader.read_i16()),
+        AGE_STRING          => i32::from(reader.read_i16()),
+        CODE_STRING         => i32::from(reader.read_i16()),
+        LONG_TEXT           => i32::from(reader.read_i16()),
+        PERSON_NAME         => i32::from(reader.read_i16()),
+        SHORT_STRING        => i32::from(reader.read_i16()),
+        SHORT_TEXT          => i32::from(reader.read_i16()),
+        UNLIMITED_TEXT      => reader.read_reserved_i32(),
+        DATE                => i32::from(reader.read_i16()),
+        DATE_TIME           => i32::from(reader.read_i16()),
+        TIME                => i32::from(reader.read_i16()),
+        DECIMAL_STRING      => i32::from(reader.read_i16()),
+        INTEGER_STRING      => i32::from(reader.read_i16()),
+        LONG_STRING         => i32::from(reader.read_i16()),
+        OTHER_BYTE          => reader.read_reserved_i32(),
+        OTHER_FLOAT         => reader.read_reserved_i32(),
+        OTHER_WORD          => reader.read_reserved_i32(),
+        UNKNOWN             => reader.read_reserved_i32(),
+        _                   => reader.read_reserved_i32()
     }
 }
