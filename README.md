@@ -5,14 +5,35 @@ A Dicom file parsing library with a simple CLI in Rust.
 ## Description
 
 The Dicom file format represents a taxonomy of clinical data including embedded binary image data.  
-Essentially, it is an n-ary tree with each node containing a tag id, a value and optionally some metadata.
+Essentially, it is an n-ary tree where each node, or tag in Dicom lingo, contains an id and a value.  
+Tag ids are classified in the taxonomy and describe the type of the tag value and its allowed uses. 
 
 
-## Design
+## API
 
 The library provides a SAX style Dicom parser, that is, an event oriented parser that decouples parsing  
-from  what you want to do with the parsed data. It only requires that you pass a DicomHandler trait where  
-you can use  the parsed data from each Dicom tag however you like.  
+from what you want to do with the parsed data. There is only one function, dicom::parse.
+
+TLDR: call dicom::parse passing a Read + Seek and a strategy pattern to handle each Dicom tag.
+
+In detail:
+
+```Rust
+pub fn parse(reader: &mut (impl Read + Seek), dicom_handler: &mut impl DicomHandler)
+```
+
+It requires to be passed,
+
+- reader: anything implementing a Read + Seek so you could parse a file but also a memory or a network stream.  
+- dicom_handler: an implementation of the DicomHandler trait,
+
+  ```Rust
+  pub trait DicomHandler {
+      fn handle_tag(&mut self, parent_index: usize, tag: DicomTag) -> usize;
+  }
+  ```
+
+  where handle_tag allows you to decide how you want to handle each Dicom tag. parent_index is a unique,  sequentially generated id assigned to the parent tag.
 
 Two reference DicomHandler implementations are provided,
 
